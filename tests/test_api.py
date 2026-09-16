@@ -16,7 +16,7 @@ def test_dashboard_rendert():
     antwort = client.get("/")
 
     assert antwort.status_code == 200
-    assert "SolarPipeline" in antwort.text
+    assert "SolarAnalytics" in antwort.text
 
 
 def test_zeitreihe_hat_gleich_lange_reihen():

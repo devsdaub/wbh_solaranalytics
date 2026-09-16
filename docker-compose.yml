@@ -3,15 +3,15 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: solarpipeline
+      POSTGRES_DB: solaranalytics
       POSTGRES_USER: solar
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5444:5432"
+      - "5445:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U solar -d solarpipeline"]
+      test: ["CMD-SHELL", "pg_isready -U solar -d solaranalytics"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,7 +22,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "8008:8000"
+      - "8009:8000"
     volumes:
       - ./app:/app/app
       - ./tests:/app/tests
@@ -30,7 +30,7 @@ services:
       - ./uploads:/app/uploads
     environment:
       WATCHFILES_FORCE_POLLING: "true"
-      DATABASE_URL: postgresql+psycopg2://solar:${DB_PASSWORD}@db:5432/solarpipeline
+      DATABASE_URL: postgresql+psycopg2://solar:${DB_PASSWORD}@db:5432/solaranalytics
     depends_on:
       db:
         condition: service_healthy

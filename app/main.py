@@ -42,14 +42,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SolarPipeline",
-    description="Datenpipeline für ein Balkonkraftwerk in Stuttgart",
+    title="SolarAnalytics",
+    description="Datenpipeline und Ertragsanalyse für ein Balkonkraftwerk",
     version="0.1.0",
     lifespan=lifespan,
 )
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 templates.env.filters["lokal"] = als_lokalzeit
+templates.env.globals["anlage"] = load_plant_config
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(api_router)

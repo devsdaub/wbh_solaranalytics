@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}SolarPipeline{% endblock %}</title>
+    <title>{% block title %}SolarAnalytics{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <nav class="navbar">
-        <a href="/" class="brand">SolarPipeline</a>
+        <a href="/" class="brand">SolarAnalytics</a>
         <div class="nav-rechts">
-            <span class="coords">Stuttgart · 48.78°N 9.18°E</span>
+            {% set standort = anlage().location %}
+            <span class="coords">{{ standort.city }} · {{ "%.2f"|format(standort.latitude|abs) }}°{{ "N" if standort.latitude >= 0 else "S" }} {{ "%.2f"|format(standort.longitude|abs) }}°{{ "E" if standort.longitude >= 0 else "W" }}</span>
             <a href="/settings" class="nav-icon" title="Einstellungen" aria-label="Einstellungen">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
                      stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
@@ -26,7 +27,7 @@
     </main>
 
     <footer class="footer">
-        Case Study · Wilhelm Büchner Hochschule
+        Case Study und Bachelorarbeit · Wilhelm Büchner Hochschule
     </footer>
 
     <script src="/static/js/chart.umd.min.js"></script>

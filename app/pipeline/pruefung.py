@@ -33,7 +33,7 @@ def pruefe_tageswerte(frame: pd.DataFrame, kapazitaet_w: int) -> list[dict]:
          (frame["production_kwh"] > 0) & (frame["gti_kwh"] == 0)),
         (f"Ertrag über {obergrenze:.1f} kWh",
          frame["production_kwh"] > obergrenze),
-        ("Wirkungsgrad über 1",
+        ("Effizienzquotient über 1",
          frame["eq"] > EQ_OBERGRENZE),
         ("Negativer Ertrag",
          frame["production_kwh"] < 0),

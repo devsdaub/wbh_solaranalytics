@@ -10,8 +10,8 @@ Dashboard mit ein paar Diagrammen.
 Mehr als Docker wird nicht gebraucht, also Docker Desktop unter Windows
 oder macOS, unter Linux Docker Engine mit dem Compose-Plugin. Python,
 Postgres und die Bibliotheken stecken im Image und werden beim ersten
-Start mitgebaut. Frei sein müssen die Ports 8008 für das Dashboard und
-5444 für die Datenbank, sonst lassen sie sich in docker-compose.yml
+Start mitgebaut. Frei sein müssen die Ports 8009 für das Dashboard und
+5445 für die Datenbank, sonst lassen sie sich in docker-compose.yml
 ändern.
 
 ## Starten
@@ -21,7 +21,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Danach läuft das Dashboard unter http://localhost:8008, die API Doku
+Danach läuft das Dashboard unter http://localhost:8009, die API Doku
 unter /docs. Der erste Start dauert etwas länger, weil das Image gebaut
 und die Postgres-Datenbank neu angelegt wird, danach reicht
 `docker compose up` ohne `--build`.
