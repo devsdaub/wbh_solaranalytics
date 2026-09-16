@@ -1,0 +1,16 @@
+plant:
+  name: "Kleines Kraftwerk"
+  installation_date: "2025-04-26"
+  location:
+    latitude: 48.7823
+    longitude: 9.177
+    city: "Stuttgart"
+  panel:
+    capacity_w: 800
+    module_capacity_wp: 900
+    tilt_deg: 17
+    azimuth_deg: 203
+  economics:
+    acquisition_cost_eur: 550
+    subsidy_eur: 0
+    electricity_price_eur_kwh: 0.30

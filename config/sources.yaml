@@ -1,0 +1,25 @@
+sources:
+  open_meteo_weather:
+    enabled: true
+    url: https://archive-api.open-meteo.com/v1/archive
+    default_days_back: 30
+    variables:
+    - global_tilted_irradiance
+    - temperature_2m
+    - cloud_cover
+    - cloud_cover_low
+    - cloud_cover_mid
+    - cloud_cover_high
+    - visibility
+  open_meteo_air:
+    enabled: true
+    url: https://air-quality-api.open-meteo.com/v1/air-quality
+    default_days_back: 30
+    variables:
+    - dust
+    - pm10
+  hoymiles_api:
+    enabled: true
+    url: https://neapi.hoymiles.com
+    default_days_back: 30
+    variables: []

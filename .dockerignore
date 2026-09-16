@@ -1,0 +1,13 @@
+.git
+.gitignore
+.gitattributes
+.env
+.env.example
+__pycache__/
+*.pyc
+.pytest_cache/
+uploads/
+docs/
+README.md
+COACHING.md
+*.md

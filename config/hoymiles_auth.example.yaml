@@ -1,0 +1,9 @@
+# Kopieren nach config/hoymiles_auth.yaml und ausfüllen.
+# Die echte Datei steht in der .gitignore und wird nie committet.
+
+hoymiles_auth:
+  # E-Mail-Adresse des S-Miles-Cloud-Kontos
+  username: "dein.name@example.com"
+  password: "dein-passwort"
+  station_id: "1234567"
+  base_url: "https://neapi.hoymiles.com"

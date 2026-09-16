@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard · SolarPipeline{% endblock %}
+
+{% block content %}
+<section class="stats">
+    <div class="stat">
+        <span class="stat-value">{{ tage_gesamt }}</span>
+        <span class="stat-label">Tage mit Daten</span>
+    </div>
+    <div class="stat">
+        <span class="stat-value">{{ tage_mit_produktion }}</span>
+        <span class="stat-label">Tage mit Produktion</span>
+    </div>
+    <div class="stat">
+        <span class="stat-value">{{ "%.0f"|format(summe_kwh) if summe_kwh else "n. v." }}</span>
+        <span class="stat-label">kWh gesamt</span>
+    </div>
+    <div class="stat">
+        <span class="stat-value">{{ "%.2f"|format(eq_mittel) if eq_mittel else "n. v." }}</span>
+        <span class="stat-label">Ø Effizienzquotient</span>
+    </div>
+</section>
+
+<div class="chart-grid">
+    <section class="card voll">
+        <div class="card-kopf">
+            <h2 id="zeitraum-titel">Verlauf, letzte 90 Tage</h2>
+            <div class="knopfleiste">
+                <button class="zeitraum-knopf" data-tage="30" data-titel="Verlauf, letzte 30 Tage">30 T</button>
+                <button class="zeitraum-knopf aktiv" data-tage="90" data-titel="Verlauf, letzte 90 Tage">90 T</button>
+                <button class="zeitraum-knopf" data-tage="365" data-titel="Verlauf, letztes Jahr">1 J</button>
+            </div>
+        </div>
+        <div class="chart-box">
+            <canvas id="chart-zeitreihe"></canvas>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Monatssummen im Jahresvergleich</h2>
+        <div class="chart-box-klein">
+            <canvas id="chart-monate"></canvas>
+        </div>
+        <p class="empty">Monate mit unvollständigen Daten enthalten entsprechend weniger Messtage.</p>
+    </section>
+
+    <section class="card">
+        <h2>Tagesproduktion im Jahresverlauf</h2>
+        {% if heatmap %}
+        <div class="table-wrap">
+            <div class="heatmap">
+                <div class="hm-kopf">
+                    <span class="hm-label"></span>
+                    {% for tag in range(1, 32) %}
+                    <span class="hm-tagnr">{{ "%02d"|format(tag) }}</span>
+                    {% endfor %}
+                </div>
+                {% for monat in heatmap %}
+                <div class="hm-zeile">
+                    <span class="hm-label">{{ monat.label }}</span>
+                    {% for tag in monat.tage %}
+                    {% if not tag.vorhanden %}
+                    <span class="hm-zelle hm-leer"></span>
+                    {% elif tag.wert is none %}
+                    <span class="hm-zelle hm-fehlt" title="{{ tag.datum }}: keine Daten"></span>
+                    {% else %}
+                    <span class="hm-zelle hm-s{{ tag.stufe }}"
+                          title="{{ tag.datum }}: {{ "%.2f"|format(tag.wert) }} kWh"></span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <p class="empty">Je kräftiger die Farbe, desto höher der Tagesertrag. Schraffierte Felder sind Tage ohne Messung.</p>
+        {% else %}
+        <p class="empty">Noch keine Produktionsdaten vorhanden.</p>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <div class="card-kopf">
+            <h2>Produktion und Wetter im Wochenverlauf</h2>
+            <div class="knopfleiste">
+                <button class="faktor-knopf aktiv" data-faktor="temperatur">Temperatur</button>
+                <button class="faktor-knopf" data-faktor="bewoelkung">Bewölkung</button>
+                <button class="faktor-knopf" data-faktor="staub">Staub</button>
+            </div>
+        </div>
+        <div class="chart-box-klein">
+            <canvas id="chart-trends"></canvas>
+        </div>
+        <p class="empty">
+            Wochenmittel. Links die Produktion, rechts der gewählte Vergleichswert
+            in seiner eigenen Einheit.
+        </p>
+    </section>
+
+    <section class="card">
+        <h2>Produktion über Einstrahlung</h2>
+        <div class="chart-box-klein">
+            <canvas id="chart-streuung"></canvas>
+        </div>
+        <p class="empty">Jeder Punkt ein Tag. Zum Datum den Punkt überfahren.</p>
+    </section>
+</div>
+
+<section class="card">
+    <h2>Tageswerte, letzte 21 Tage</h2>
+
+    {% if tage %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Datum</th>
+                    <th class="num">Produktion kWh</th>
+                    <th class="num">GTI kWh/m²</th>
+                    <th class="num">Temperatur °C</th>
+                    <th class="num">Bewölkung %</th>
+                    <th class="num">Staub μg/m³</th>
+                    <th class="num">EQ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tag in tage %}
+                <tr>
+                    <td class="mono">{{ tag.date.strftime("%d.%m.%Y") }}</td>
+                    <td class="mono num">{{ "%.2f"|format(tag.production_kwh) if tag.production_kwh is not none else "n. v." }}</td>
+                    <td class="mono num">{{ "%.2f"|format(tag.gti_kwh) if tag.gti_kwh is not none else "n. v." }}</td>
+                    <td class="mono num">{{ "%.1f"|format(tag.avg_temperature) if tag.avg_temperature is not none else "n. v." }}</td>
+                    <td class="mono num">{{ tag.avg_cloud_cover if tag.avg_cloud_cover is not none else "n. v." }}</td>
+                    <td class="mono num">{{ "%.1f"|format(tag.max_dust) if tag.max_dust is not none else "n. v." }}</td>
+                    <td class="mono num">{{ "%.2f"|format(tag.eq) if tag.eq is not none else "n. v." }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty">
+        Noch keine Tageswerte. Import und Pipeline-Steuerung in den
+        <a href="/settings">Einstellungen</a>.
+    </p>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

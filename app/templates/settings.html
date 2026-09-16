@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Einstellungen · SolarPipeline{% endblock %}
+
+{% block content %}
+<h1>Einstellungen</h1>
+<p class="subtitle">Datenimport, Pipeline-Steuerung und Konfiguration</p>
+
+<section class="stats">
+    <div class="stat">
+        <span class="stat-value">{{ "aktiv" if status.laeuft else "gestoppt" }}</span>
+        <span class="stat-label">Scheduler</span>
+    </div>
+    <div class="stat">
+        <span class="stat-value">{{ scheduler.jobs["pipeline"].interval_minutes }}</span>
+        <span class="stat-label">Intervall Minuten</span>
+    </div>
+    <div class="stat">
+        <span class="stat-value">{{ naechster|lokal("%d.%m. %H:%M") }}</span>
+        <span class="stat-label">Nächster Lauf {{ zeitzone }}</span>
+    </div>
+    <div class="stat">
+        <span class="stat-value">{{ letzter_lauf.status if letzter_lauf else "n. v." }}</span>
+        <span class="stat-label">Letzter Lauf</span>
+    </div>
+</section>
+
+{% if gespeichert == "lauf" %}
+<div class="hinweis hinweis-ok">Pipeline-Lauf abgeschlossen, {{ tage }} Tage verarbeitet.</div>
+{% elif gespeichert == "backfill" %}
+<div class="hinweis hinweis-ok">
+    {% if tage %}Wetterdaten für {{ tage }} Tage nachgeladen.
+    {% else %}Es fehlten keine Wetterdaten.{% endif %}
+</div>
+{% elif gespeichert == "fehler" %}
+<div class="hinweis hinweis-fehler">
+    Pipeline-Lauf fehlgeschlagen. Einzelheiten stehen in der Historie.
+</div>
+{% elif gespeichert == "upload" %}
+<div class="hinweis hinweis-ok">Import erfolgreich, {{ zeilen }} Tageswerte verarbeitet.</div>
+{% elif gespeichert == "upload_fehler" %}
+<div class="hinweis hinweis-fehler">Import fehlgeschlagen. Ist es ein Energy-Report?</div>
+{% elif gespeichert == "anlage_eq" %}
+<div class="hinweis hinweis-ok">
+    Anlagendaten gespeichert. Die Modulleistung hat sich geändert, alle
+    Effizienzquotienten wurden neu berechnet.
+</div>
+{% elif gespeichert %}
+<div class="hinweis hinweis-ok">Einstellungen gespeichert.</div>
+{% endif %}
+
+<div class="settings-grid">
+<section class="card">
+    <h2>Hoymiles-Export importieren</h2>
+    <form action="/api/upload/energy/form" method="post" enctype="multipart/form-data" class="upload-form">
+        <input type="file" name="file" accept=".csv" required>
+        <button type="submit">Importieren</button>
+    </form>
+    <p class="empty">
+        Energy-Report als CSV, Tageswerte in kWh. Ein erneuter Import desselben
+        Zeitraums aktualisiert die vorhandenen Werte.
+    </p>
+</section>
+
+<section class="card">
+    <h2>Pipeline</h2>
+    <form action="/settings/scheduler" method="post" class="einstellungen">
+        <label>
+            <span>Intervall in Minuten</span>
+            <input type="number" name="interval_minutes" min="1" max="1440"
+                   value="{{ scheduler.jobs['pipeline'].interval_minutes }}" required>
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" name="enabled" value="true"
+                   {{ "checked" if scheduler.enabled else "" }}>
+            <span>Automatische Ausführung aktiv</span>
+        </label>
+        <button type="submit">Speichern</button>
+    </form>
+    <form action="/settings/run" method="post" class="einstellungen">
+        <button type="submit">Pipeline jetzt ausführen</button>
+    </form>
+    <form action="/settings/backfill" method="post" class="einstellungen">
+        <button type="submit">Fehlende Wetterdaten nachladen</button>
+    </form>
+    <p class="empty">
+        {% if wetterluecken.fehlende_tage %}
+        Für {{ wetterluecken.fehlende_tage }} Tage mit Produktion fehlen noch
+        vollständige Wetterdaten.
+        {% else %}
+        Zu allen Tagen mit Produktion liegen vollständige Wetterdaten vor.
+        {% endif %}
+        Gespeichert wird in <code>config/scheduler.yaml</code>.
+    </p>
+</section>
+
+<section class="card">
+    <h2>Datenquellen</h2>
+    <form action="/settings/sources" method="post" class="einstellungen">
+        <label class="checkbox">
+            <input type="checkbox" name="open_meteo_weather" value="true"
+                   {{ "checked" if quellen.open_meteo_weather.enabled else "" }}>
+            <span>Open-Meteo Wetter</span>
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" name="open_meteo_air" value="true"
+                   {{ "checked" if quellen.open_meteo_air.enabled else "" }}>
+            <span>Open-Meteo Luftqualität</span>
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" name="hoymiles_api" value="true"
+                   {{ "checked" if quellen.hoymiles_api.enabled else "" }}>
+            <span>Hoymiles Cloud-API</span>
+        </label>
+
+        <button type="submit">Speichern</button>
+    </form>
+    <p class="empty">
+        Abgeschaltete Quellen werden beim Pipeline-Lauf übersprungen. Die
+        Änderung wirkt ab dem nächsten Durchlauf, ohne Neustart.
+    </p>
+</section>
+</div>
+
+<section class="card">
+    <h2>Lauf-Historie</h2>
+    {% if laeufe %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Start {{ zeitzone }}</th>
+                    <th class="num">Dauer s</th>
+                    <th>Auslöser</th>
+                    <th>Status</th>
+                    <th class="num">Datensätze</th>
+                    <th class="num">Tage</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lauf in laeufe %}
+                <tr>
+                    <td class="mono">{{ lauf.started_at|lokal("%d.%m. %H:%M:%S") }}</td>
+                    <td class="mono num">
+                        {{ "%.1f"|format((lauf.finished_at - lauf.started_at).total_seconds())
+                           if lauf.finished_at else "n. v." }}
+                    </td>
+                    <td class="mono">{{ lauf.trigger }}</td>
+                    <td class="mono">
+                        <span class="status status-{{ lauf.status }}">{{ lauf.status }}</span>
+                    </td>
+                    <td class="mono num">{{ lauf.records if lauf.records is not none else "n. v." }}</td>
+                    <td class="mono num">{{ lauf.days if lauf.days is not none else "n. v." }}</td>
+                </tr>
+                {% if lauf.error %}
+                <tr>
+                    <td colspan="6" class="fehlerzeile">{{ lauf.error }}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty">Noch kein Lauf protokolliert.</p>
+    {% endif %}
+</section>
+{% endblock %}

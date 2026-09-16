@@ -1,0 +1,6 @@
+scheduler:
+  enabled: true
+  jobs:
+    pipeline:
+      interval_minutes: 20
+      enabled: true

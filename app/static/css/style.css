@@ -1,0 +1,507 @@
+:root {
+    /* Grundfarben */
+    --color-bg:          #f4f6f9;
+    --color-surface:     #ffffff;
+    --color-heading:     #1b3a5c;
+    --color-text:        #37475a;
+    --color-text-muted:  #8b98a9;
+    --color-border:      #e8edf3;
+
+    /* Akzent- und Datenfarben */
+    --color-accent:      #22c55e;
+    --color-accent-dark: #16a34a;
+    --color-data:        #22c55e;
+    --color-data-2:      #60a5fa;
+    --color-data-3:      #f59e0b;
+    --color-danger:      #ef4444;
+
+    /* Typografie */
+    --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono:    "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+    /* Abstände */
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+
+    --radius: 12px;
+    --shadow: 0 1px 3px rgba(27, 58, 92, 0.06),
+              0 1px 2px rgba(27, 58, 92, 0.04);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-display);
+    background: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* --- Navigationsleiste ---------------------------------------------------- */
+
+.navbar {
+    background: var(--color-surface);
+    box-shadow: var(--shadow);
+    padding: var(--space-md) var(--space-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.navbar a.brand {
+    color: var(--color-heading);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.nav-rechts {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+}
+
+.coords {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.nav-icon {
+    color: var(--color-text-muted);
+    display: flex;
+}
+
+.nav-icon:hover {
+    color: var(--color-accent);
+}
+
+/* --- Inhaltsbereich ------------------------------------------------------- */
+
+.content {
+    flex: 1;
+    max-width: 1600px;
+    width: 100%;
+    margin: 0 auto;
+    padding: var(--space-lg);
+}
+
+h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-heading);
+}
+
+.subtitle {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-lg);
+}
+
+/* --- Karten --------------------------------------------------------------- */
+
+.card {
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-md);
+}
+
+.card h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    margin-bottom: var(--space-md);
+}
+
+.card-kopf {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+}
+
+.card-kopf h2 {
+    margin-bottom: 0;
+}
+
+/* --- Diagramm-Raster ------------------------------------------------------- */
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+.chart-grid .card {
+    margin-bottom: 0;
+}
+
+.chart-grid .voll {
+    grid-column: 1 / -1;
+}
+
+.chart-box {
+    position: relative;
+    height: 320px;
+    width: 100%;
+}
+
+.chart-box-klein {
+    position: relative;
+    height: 260px;
+    width: 100%;
+}
+
+/* --- Fußzeile ------------------------------------------------------------- */
+
+.footer {
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    text-align: center;
+    padding: var(--space-lg);
+}
+
+/* --- Kennzahlen ----------------------------------------------------------- */
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+.stat {
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+/* --- Datentabelle --------------------------------------------------------- */
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.data-table th {
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-text-muted);
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-sm);
+}
+
+.data-table td {
+    padding: var(--space-sm);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.data-table tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table tr:hover td {
+    background: var(--color-bg);
+}
+
+.mono {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+}
+
+.data-table th.num,
+.data-table td.num {
+    text-align: right;
+}
+
+.num {
+    text-align: right;
+}
+
+.empty {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    margin-top: var(--space-md);
+}
+
+/* --- Hinweise nach einer Aktion -------------------------------------------- */
+
+.hinweis {
+    padding: var(--space-md);
+    border-radius: var(--radius);
+    margin-bottom: var(--space-md);
+    font-size: 0.85rem;
+    background: var(--color-surface);
+    box-shadow: var(--shadow);
+    border-left: 3px solid var(--color-accent);
+}
+
+.hinweis-fehler {
+    border-left-color: var(--color-danger);
+}
+
+/* --- Statusanzeige --------------------------------------------------------- */
+
+.status {
+    padding: 0.15rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.status-ok {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.status-fehler {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.status-teilweise {
+    background: #ffedd5;
+    color: #c2410c;
+}
+
+.status-laeuft {
+    background: #fef3c7;
+    color: #a16207;
+}
+
+.fehlerzeile {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: #b91c1c;
+    background: #fef2f2;
+    padding: var(--space-sm);
+}
+
+/* --- Formulare und Schaltflächen ------------------------------------------- */
+
+.upload-form {
+    display: flex;
+    gap: var(--space-md);
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.upload-form input[type="file"] {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.einstellungen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    max-width: 420px;
+    margin-bottom: var(--space-md);
+}
+
+.einstellungen label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.85rem;
+}
+
+.einstellungen label.checkbox {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.einstellungen input[type="number"] {
+    font-family: var(--font-mono);
+    padding: var(--space-sm);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: var(--color-text);
+}
+
+.einstellungen input[type="number"]:focus {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -1px;
+}
+
+button {
+    background: var(--color-accent);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: var(--space-sm) var(--space-lg);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+button:hover {
+    background: var(--color-accent-dark);
+}
+
+.einstellungen button {
+    align-self: flex-start;
+}
+
+/* --- Umschalter über den Diagrammen ---------------------------------------- */
+
+.knopfleiste {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.zeitraum-knopf,
+.faktor-knopf {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.25rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--color-text-muted);
+}
+
+.zeitraum-knopf:hover,
+.faktor-knopf:hover {
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+.zeitraum-knopf.aktiv,
+.faktor-knopf.aktiv {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #ffffff;
+}
+
+
+/* --- Kalender-Heatmap ------------------------------------------------------ */
+
+.heatmap {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 700px;
+}
+
+.hm-kopf,
+.hm-zeile {
+    display: grid;
+    grid-template-columns: 64px repeat(31, 1fr);
+    gap: 3px;
+    align-items: center;
+}
+
+.hm-label {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+}
+
+.hm-tagnr {
+    font-size: 0.6rem;
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+.hm-zelle {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    background: var(--color-data);
+}
+
+.hm-zelle.hm-leer {
+    background: transparent;
+}
+
+.hm-zelle.hm-fehlt {
+    background: repeating-linear-gradient(
+        45deg, var(--color-border), var(--color-border) 2px,
+        transparent 2px, transparent 4px
+    );
+}
+
+.hm-zelle:not(.hm-leer):hover {
+    outline: 2px solid var(--color-heading);
+}
+
+
+/* --- Farbstufen für Heatmap und Balken -------------------------------------- */
+
+:root {
+    --hm-1: #dcfce7;
+    --hm-2: #a7f3c4;
+    --hm-3: #6ee7a0;
+    --hm-4: #34d07c;
+    --hm-5: #15a355;
+}
+
+.hm-zelle.hm-s1 { background: var(--hm-1); }
+.hm-zelle.hm-s2 { background: var(--hm-2); }
+.hm-zelle.hm-s3 { background: var(--hm-3); }
+.hm-zelle.hm-s4 { background: var(--hm-4); }
+.hm-zelle.hm-s5 { background: var(--hm-5); }
+
+/* --- Settings: Karten nebeneinander ----------------------------------------- */
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+/* Karten füllen die Zeilenhöhe, der Hinweistext wird nach unten geschoben */
+.settings-grid .card {
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-grid .card .empty {
+    margin-top: auto;
+    padding-top: var(--space-md);
+}
