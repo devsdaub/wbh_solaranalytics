@@ -28,6 +28,7 @@ services:
       - ./tests:/app/tests
       - ./config:/app/config
       - ./uploads:/app/uploads
+      - analytics:/app/analytics_artifacts
     environment:
       WATCHFILES_FORCE_POLLING: "true"
       DATABASE_URL: postgresql+psycopg2://solar:${DB_PASSWORD}@db:5432/solaranalytics
@@ -38,3 +39,4 @@ services:
 
 volumes:
   pgdata:
+  analytics:
