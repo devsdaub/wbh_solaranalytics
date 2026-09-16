@@ -52,8 +52,10 @@ class HourlyWeather(Base):
     cloud_cover_mid: Mapped[int | None]
     cloud_cover_high: Mapped[int | None]
     visibility: Mapped[float | None]
+    sunshine_duration: Mapped[float | None]
     dust: Mapped[float | None]
     pm10: Mapped[float | None]
+    aerosol_od: Mapped[float | None]
 
 
 class PowerReading(Base):

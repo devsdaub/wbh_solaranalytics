@@ -4,6 +4,7 @@ from pandera.errors import SchemaError, SchemaErrors
 
 from app.schemas import (
     ENERGY_REPORT_SCHEMA,
+    HOURLY_AIR_SCHEMA,
     HOURLY_WEATHER_SCHEMA,
     validiere_nachsichtig,
 )
@@ -23,6 +24,21 @@ def wetterframe(**abweichungen) -> pd.DataFrame:
         "cloud_cover_mid": [20, 20],
         "cloud_cover_high": [30, 25],
         "visibility": [None, None],
+        "sunshine_duration": [3600.0, 2400.0],
+    }
+    spalten.update(abweichungen)
+    return pd.DataFrame(spalten)
+
+
+def luftframe(**abweichungen) -> pd.DataFrame:
+    spalten = {
+        "plant_id": [1, 1],
+        "timestamp": pd.to_datetime(
+            ["2026-06-01 10:00", "2026-06-01 11:00"]
+        ).tz_localize("UTC"),
+        "dust": [1.0, 1.0],
+        "pm10": [22.3, 25.5],
+        "aerosol_od": [0.10, 0.09],
     }
     spalten.update(abweichungen)
     return pd.DataFrame(spalten)
@@ -51,6 +67,24 @@ def test_zusaetzliche_spalte_faellt_auf():
 def test_unmoegliche_temperatur_faellt_auf():
     with pytest.raises(SchemaError):
         HOURLY_WEATHER_SCHEMA.validate(wetterframe(temperature=[99.0, 22.8]))
+
+
+def test_sonnenscheindauer_ueber_einer_stunde_faellt_auf():
+    """Open-Meteo liefert Sekunden je Stunde. Mehr als 3600 heisst,
+    die Einheit hat sich geändert."""
+    with pytest.raises(SchemaError):
+        HOURLY_WEATHER_SCHEMA.validate(wetterframe(sunshine_duration=[3700.0, 2400.0]))
+
+
+def test_gueltiger_luftframe_geht_durch():
+    geprueft = HOURLY_AIR_SCHEMA.validate(luftframe())
+
+    assert len(geprueft) == 2
+
+
+def test_negative_aerosole_fallen_auf():
+    with pytest.raises(SchemaError):
+        HOURLY_AIR_SCHEMA.validate(luftframe(aerosol_od=[-0.1, 0.09]))
 
 
 def test_produktion_darf_nicht_leer_sein():

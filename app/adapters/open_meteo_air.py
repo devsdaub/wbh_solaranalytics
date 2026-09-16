@@ -7,3 +7,4 @@ class OpenMeteoAirAdapter(OpenMeteoAdapter):
 
     name = "open_meteo_air"
     schema = HOURLY_AIR_SCHEMA
+    column_map = {"time": "timestamp", "aerosol_optical_depth": "aerosol_od"}

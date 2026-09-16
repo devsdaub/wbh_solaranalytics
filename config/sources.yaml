@@ -11,6 +11,7 @@ sources:
     - cloud_cover_mid
     - cloud_cover_high
     - visibility
+    - sunshine_duration
   open_meteo_air:
     enabled: true
     url: https://air-quality-api.open-meteo.com/v1/air-quality
@@ -18,6 +19,7 @@ sources:
     variables:
     - dust
     - pm10
+    - aerosol_optical_depth
   hoymiles_api:
     enabled: true
     url: https://neapi.hoymiles.com
