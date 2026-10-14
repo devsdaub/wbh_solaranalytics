@@ -32,7 +32,6 @@ STUFEN_MITTAGSHOEHE = [30.0, 45.0]
 MIN_TAGE_JE_STUFE = 10
 
 FENSTER_QUOTE_TAGE = 14
-MIN_TAGE_QUOTE = 5
 
 FENSTER_NACHFUEHRUNG_TAGE = 30
 MIN_TAGE_NACHFUEHRUNG = 7
@@ -94,25 +93,32 @@ def faustregel(training: pd.DataFrame, test: pd.DataFrame,
     return prognose
 
 
+def gleitende_quote(tage: np.ndarray, quote: np.ndarray, ort: np.ndarray,
+                    bis: np.datetime64, ziel_ort: float,
+                    fenster: int = FENSTER_QUOTE_TAGE) -> float:
+    """Median der Ertragsquote der letzten Messtage bis einschliesslich bis, am selben Standort."""
+    frueher = ~np.isnan(quote) & (tage <= bis)
+    hier = np.flatnonzero(frueher & (ort == ziel_ort))
+    if not len(hier):
+        # am ersten Tag nach einem Umzug fehlt noch eigene Geschichte
+        hier = np.flatnonzero(frueher)
+    return float(np.median(quote[hier[-fenster:]])) if len(hier) else float("nan")
+
+
 def faustregel_nachgefuehrt(frame: pd.DataFrame, gti_spalte: str = "gti_kwh_m2",
-                            fenster: int = FENSTER_QUOTE_TAGE, abstand: int = 1) -> np.ndarray:
+                            fenster: int = FENSTER_QUOTE_TAGE, abstand: int = 1,
+                            gti_ziel_spalte: str | None = None) -> np.ndarray:
     """Einstrahlung mal Median der Ertragsquote der letzten Messtage am selben Standort."""
     # abstand: Tage zwischen letztem verwendetem Messtag und Zieltag
     tage = pd.to_datetime(frame["date"]).to_numpy(dtype="datetime64[D]")
     quote = ertragsquote(frame, gti_spalte)
-    gti = frame[gti_spalte].to_numpy(dtype=float)
+    gti = frame[gti_ziel_spalte or gti_spalte].to_numpy(dtype=float)
     ort = _spalte_oder_null(frame, "standort")
-    gueltig = ~np.isnan(quote)
 
     prognose = np.full(len(frame), np.nan)
     for i in range(len(frame)):
-        frueher = gueltig & (tage <= tage[i] - np.timedelta64(abstand, "D"))
-        hier = np.flatnonzero(frueher & (ort == ort[i]))
-        if len(hier) < MIN_TAGE_QUOTE:
-            # kurz nach einem Umzug fehlt noch eigene Geschichte
-            hier = hier if len(hier) else np.flatnonzero(frueher)
-        if len(hier):
-            prognose[i] = np.median(quote[hier[-fenster:]]) * gti[i]
+        bis = tage[i] - np.timedelta64(abstand, "D")
+        prognose[i] = gleitende_quote(tage, quote, ort, bis, ort[i], fenster) * gti[i]
     return prognose
 
 
