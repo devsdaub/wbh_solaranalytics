@@ -16,6 +16,7 @@ from app.api.upload import router as upload_router
 from app.config import load_plant_config, load_scheduler_config, load_sources_config
 from app.database import Base, SessionLocal, engine
 from app.filters import als_lokalzeit, zeitzone_kuerzel
+from app.migration import ergaenze_spalten
 from app.models import DailyFact, PipelineRun, PlantConfig
 from app.pipeline.auswertung import baue_heatmap
 from app.pipeline.ingestion import _current_plant_id
@@ -35,6 +36,7 @@ BASE_DIR = Path(__file__).resolve().parent
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(engine)
+    ergaenze_spalten()
     seed_plant_config()
     start_scheduler()
     yield

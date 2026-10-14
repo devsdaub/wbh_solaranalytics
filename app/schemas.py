@@ -5,18 +5,22 @@ from pandera.errors import SchemaErrors
 
 logger = logging.getLogger(__name__)
 
+WETTER_SPALTEN = {
+    "gti": pa.Column(float, pa.Check.ge(0), nullable=True),
+    "temperature": pa.Column(float, pa.Check.in_range(-40, 55), nullable=True),
+    "cloud_cover": pa.Column("Int64", pa.Check.in_range(0, 100), nullable=True),
+    "cloud_cover_low": pa.Column("Int64", pa.Check.in_range(0, 100), nullable=True),
+    "cloud_cover_mid": pa.Column("Int64", pa.Check.in_range(0, 100), nullable=True),
+    "cloud_cover_high": pa.Column("Int64", pa.Check.in_range(0, 100), nullable=True),
+    "visibility": pa.Column(float, pa.Check.ge(0), nullable=True),
+    "sunshine_duration": pa.Column(float, pa.Check.in_range(0, 3600), nullable=True),
+}
+
 HOURLY_WEATHER_SCHEMA = pa.DataFrameSchema(
     {
         "plant_id": pa.Column(int),
         "timestamp": pa.Column("datetime64[ns, UTC]", unique=True),
-        "gti": pa.Column(float, pa.Check.ge(0), nullable=True),
-        "temperature": pa.Column(float, pa.Check.in_range(-40, 55), nullable=True),
-        "cloud_cover": pa.Column("Int64", pa.Check.in_range(0, 100), nullable=True),
-        "cloud_cover_low": pa.Column("Int64", pa.Check.in_range(0, 100), nullable=True),
-        "cloud_cover_mid": pa.Column("Int64", pa.Check.in_range(0, 100), nullable=True),
-        "cloud_cover_high": pa.Column("Int64", pa.Check.in_range(0, 100), nullable=True),
-        "visibility": pa.Column(float, nullable=True),
-        "sunshine_duration": pa.Column(float, pa.Check.in_range(0, 3600), nullable=True),
+        **WETTER_SPALTEN,
     },
     strict=True,
     coerce=True,
@@ -29,6 +33,42 @@ HOURLY_AIR_SCHEMA = pa.DataFrameSchema(
         "dust": pa.Column(float, pa.Check.ge(0), nullable=True),
         "pm10": pa.Column(float, pa.Check.ge(0), nullable=True),
         "aerosol_od": pa.Column(float, pa.Check.ge(0), nullable=True),
+    },
+    strict=True,
+    coerce=True,
+)
+
+HOURLY_SATELLIT_SCHEMA = pa.DataFrameSchema(
+    {
+        "plant_id": pa.Column(int),
+        "timestamp": pa.Column("datetime64[ns, UTC]", unique=True),
+        "gti_satellit": pa.Column(float, pa.Check.in_range(0, 1500), nullable=True),
+    },
+    strict=True,
+    coerce=True,
+)
+
+HOURLY_FORECAST_SCHEMA = pa.DataFrameSchema(
+    {
+        "plant_id": pa.Column(int),
+        "timestamp": pa.Column("datetime64[ns, UTC]"),
+        "vorlauf": pa.Column(int, pa.Check.in_range(1, 16)),
+        "gti": WETTER_SPALTEN["gti"],
+        "temperature": WETTER_SPALTEN["temperature"],
+        "cloud_cover": WETTER_SPALTEN["cloud_cover"],
+        "sunshine_duration": WETTER_SPALTEN["sunshine_duration"],
+    },
+    unique=["timestamp", "vorlauf"],
+    strict=True,
+    coerce=True,
+)
+
+VORHERSAGE_SCHEMA = pa.DataFrameSchema(
+    {
+        "plant_id": pa.Column(int),
+        "timestamp": pa.Column("datetime64[ns, UTC]", unique=True),
+        **WETTER_SPALTEN,
+        "precipitation": pa.Column(float, pa.Check.ge(0), nullable=True),
     },
     strict=True,
     coerce=True,
