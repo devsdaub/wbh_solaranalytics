@@ -21,6 +21,20 @@ class Panel(BaseModel):
     azimuth_deg: int
 
 
+class FruehererStandort(BaseModel):
+    bis: date
+    city: str
+    latitude: float
+    longitude: float
+    azimuth_deg: int
+    tilt_deg: int | None = None
+
+
+class Zeitraum(BaseModel):
+    von: date
+    bis: date
+
+
 class Economics(BaseModel):
     acquisition_cost_eur: float
     subsidy_eur: float
@@ -32,6 +46,8 @@ class PlantSettings(BaseModel):
     installation_date: date
     location: Location
     panel: Panel
+    frueher: list[FruehererStandort] = []
+    uebergang: Zeitraum | None = None
     economics: Economics
 
 
@@ -44,13 +60,18 @@ def load_plant_config() -> PlantSettings:
 class SourceSettings(BaseModel):
     enabled: bool
     url: str
+    models: str | None = None
     default_days_back: int
+    max_vorlauf: int | None = None
     variables: list[str]
 
 
 class SourcesSettings(BaseModel):
     open_meteo_weather: SourceSettings
     open_meteo_air: SourceSettings
+    open_meteo_satellit: SourceSettings
+    open_meteo_vorhersagearchiv: SourceSettings
+    open_meteo_vorhersage: SourceSettings
     hoymiles_api: SourceSettings
 
 
@@ -62,7 +83,7 @@ def load_sources_config() -> SourcesSettings:
 
 def save_sources_config(settings: SourcesSettings) -> None:
     path = CONFIG_DIR / "sources.yaml"
-    inhalt = {"sources": settings.model_dump()}
+    inhalt = {"sources": settings.model_dump(exclude_none=True)}
     path.write_text(
         yaml.safe_dump(inhalt, allow_unicode=True, sort_keys=False),
         encoding="utf-8",

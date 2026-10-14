@@ -2,14 +2,23 @@ plant:
   name: "Kleines Kraftwerk"
   installation_date: "2025-04-26"
   location:
-    latitude: 48.7823
-    longitude: 9.177
-    city: "Stuttgart"
+    latitude: 48.75
+    longitude: 9.17
+    city: "Stuttgart-Degerloch"
   panel:
     capacity_w: 800
     module_capacity_wp: 900
-    tilt_deg: 17
-    azimuth_deg: 203
+    tilt_deg: 72
+    azimuth_deg: 208
+  frueher:
+    - bis: "2026-02-21"
+      city: "Stuttgart"
+      latitude: 48.7823
+      longitude: 9.177
+      azimuth_deg: 203
+  uebergang:
+    von: "2026-02-22"
+    bis: "2026-03-08"
   economics:
     acquisition_cost_eur: 550
     subsidy_eur: 0
