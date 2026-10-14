@@ -100,12 +100,22 @@
         <label class="checkbox">
             <input type="checkbox" name="open_meteo_weather" value="true"
                    {{ "checked" if quellen.open_meteo_weather.enabled else "" }}>
-            <span>Open-Meteo Wetter</span>
+            <span>Open-Meteo Wetter (ICON-D2-Analyse)</span>
         </label>
         <label class="checkbox">
             <input type="checkbox" name="open_meteo_air" value="true"
                    {{ "checked" if quellen.open_meteo_air.enabled else "" }}>
             <span>Open-Meteo Luftqualität</span>
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" name="open_meteo_satellit" value="true"
+                   {{ "checked" if quellen.open_meteo_satellit.enabled else "" }}>
+            <span>Satellit SARAH-3</span>
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" name="open_meteo_vorhersagearchiv" value="true"
+                   {{ "checked" if quellen.open_meteo_vorhersagearchiv.enabled else "" }}>
+            <span>Archivierte ICON-Vorhersagen</span>
         </label>
         <label class="checkbox">
             <input type="checkbox" name="hoymiles_api" value="true"

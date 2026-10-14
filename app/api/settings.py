@@ -34,12 +34,16 @@ def update_scheduler(
 def update_sources(
     open_meteo_weather: bool = Form(False),
     open_meteo_air: bool = Form(False),
+    open_meteo_satellit: bool = Form(False),
+    open_meteo_vorhersagearchiv: bool = Form(False),
     hoymiles_api: bool = Form(False),
 ) -> RedirectResponse:
     """Schaltet einzelne Datenquellen an oder ab."""
     settings = load_sources_config()
     settings.open_meteo_weather.enabled = open_meteo_weather
     settings.open_meteo_air.enabled = open_meteo_air
+    settings.open_meteo_satellit.enabled = open_meteo_satellit
+    settings.open_meteo_vorhersagearchiv.enabled = open_meteo_vorhersagearchiv
     settings.hoymiles_api.enabled = hoymiles_api
     save_sources_config(settings)
 
