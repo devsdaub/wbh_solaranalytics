@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select, text
 
+from app.api.analytics import router as analytics_router
 from app.api.data import router as data_router
 from app.api.routes import router as api_router
 from app.api.settings import router as settings_router
@@ -45,8 +46,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="SolarAnalytics",
-    description="Datenpipeline und Ertragsanalyse für ein Balkonkraftwerk",
-    version="0.1.0",
+    description="Datenpipeline, Ertragsprognose und Modellvergleich für ein Balkonkraftwerk",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -59,6 +60,7 @@ app.include_router(api_router)
 app.include_router(upload_router)
 app.include_router(data_router)
 app.include_router(settings_router)
+app.include_router(analytics_router)
 
 
 @app.get("/health")
@@ -112,6 +114,16 @@ def dashboard(request: Request):
             "zeitzone": zeitzone_kuerzel(),
         },
     )
+
+
+@app.get("/prognose", response_class=HTMLResponse)
+def prognose_page(request: Request):
+    return templates.TemplateResponse(request, "prognose.html", {})
+
+
+@app.get("/analyse", response_class=HTMLResponse)
+def analyse_page(request: Request):
+    return templates.TemplateResponse(request, "analyse.html", {})
 
 
 @app.get("/settings", response_class=HTMLResponse)
