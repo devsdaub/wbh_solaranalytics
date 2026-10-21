@@ -225,6 +225,17 @@ in die Zukunft sieht, die Spanne der Prognose, die Auswahlregel, den
 wöchentlichen Analyselauf und die Erreichbarkeit der Seiten und
 Endpunkte. Die Tests der Endpunkte brauchen die laufende Datenbank.
 
+Dieselben Tests laufen bei jedem Push auf main in GitHub Actions gegen
+eine leere Datenbank, erst danach wird das Image gebaut.
+
+## Auf dem NAS betreiben
+
+GitHub Actions baut bei jedem Push auf main das Image
+`ghcr.io/devsdaub/wbh-solaranalytics` und legt es in der GitHub
+Container Registry ab. Das NAS zieht nur dieses Image und baut nichts
+selbst. Compose-Datei, Variablen und Anleitung samt Datenübernahme vom PC
+liegen in deploy/nas.
+
 ## Stoppen und zurücksetzen
 
 ```bash

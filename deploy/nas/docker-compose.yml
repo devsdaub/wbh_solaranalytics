@@ -1,0 +1,52 @@
+# SolarAnalytics auf dem NAS, nur Images ziehen, nie bauen.
+#
+# In Portainer als Stack einfügen (Werte aus stack.env.example unter "Environment variables")
+# oder in UGOS Pro unter Docker → Projekt → Erstellen. Das Image baut GitHub Actions bei
+# jedem Push auf main, siehe .github/workflows/docker-publish.yml und README.md hier.
+
+name: solaranalytics
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: solaranalytics
+      POSTGRES_USER: solar
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD fehlt}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # kein Port nach außen, die App erreicht die Datenbank über das Compose-Netz
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U solar -d solaranalytics"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: ghcr.io/${GHCR_OWNER:-devsdaub}/wbh-solaranalytics:${SOLARANALYTICS_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${NAS_BIND:-0.0.0.0}:${NAS_PORT:-8009}:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://solar:${DB_PASSWORD}@db:5432/solaranalytics
+      TZ: ${NAS_TZ:-Europe/Berlin}
+    volumes:
+      # plant.yaml, scheduler.yaml, sources.yaml und hoymiles_auth.yaml, auf der Freigabe sicht- und sicherbar
+      - ${NAS_CONFIG_PATH:-/volume1/docker/solaranalytics/config}:/app/config
+      - uploads:/app/uploads
+      - analytics:/app/analytics_artifacts
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+volumes:
+  pgdata:
+  uploads:
+  analytics:
