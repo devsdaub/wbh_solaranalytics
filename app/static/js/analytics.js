@@ -298,19 +298,25 @@ function verfahren() {
 
 // --- Was den Ertrag bestimmt --------------------------------------------------------------------
 
-function anteileJeWert() {
-    const werte = D.ergebnisse.importance.werte;
+// für morgen stammt das Wetter aus der Vorhersage, nicht aus der ICON-D2-Analyse
+const QUELLE_MORGEN = "Open-Meteo Wettervorhersage, ICON";
+const NAME_MORGEN = { "Einstrahlung auf die Module": "Einstrahlung laut Vorhersage" };
+
+function anteileJeWert(lage = "rueckblick") {
+    const werte = (lage === "vorhersage" ? D.ergebnisse.importance_vorhersage : D.ergebnisse.importance).werte;
     const summe = werte.reduce((s, w) => s + Math.max(w.beitrag_mae, 0), 0);
     const je = Object.fromEntries(werte.map((w) => [w.merkmal, 100 * Math.max(w.beitrag_mae, 0) / summe]));
     return WERTE.map((w) => ({ ...w, anteil: w.merkmale.reduce((s, m) => s + (je[m] || 0), 0) }));
 }
 
 function einfluss() {
-    const liste = anteileJeWert().filter((w) => w.anteil > 0).sort((a, b) => b.anteil - a.anteil);
-    return teil(`<section class="card">
-        <div class="card-kopf"><h2>Was den Ertrag bestimmt</h2></div>
-        <div class="chart-box" style="height:${Math.max(260, liste.length * 30 + 60)}px"><canvas id="chart-einfluss"></canvas></div>
-    </section>`, () => {
+    const mitMorgen = Boolean(D.ergebnisse.importance_vorhersage);
+    const zustand = { lage: "rueckblick" };
+    const zeichnen = () => {
+        const morgen = zustand.lage === "vorhersage";
+        const liste = anteileJeWert(zustand.lage).filter((w) => w.anteil > 0).sort((a, b) => b.anteil - a.anteil)
+            .map((w) => ({ ...w, name: morgen ? NAME_MORGEN[w.name] || w.name : w.name, herkunft: morgen && w.quelle === "wetter" ? QUELLE_MORGEN : QUELLEN[w.quelle] }));
+        document.getElementById("chart-einfluss").parentElement.style.height = `${Math.max(260, liste.length * 30 + 60)}px`;
         chart("chart-einfluss", {
             type: "bar",
             data: { labels: liste.map((l) => l.name), datasets: [{ data: liste.map((l) => l.anteil), backgroundColor: liste.map((l, i) => i === 0 ? FARBE.dunkel : FARBE.gruen), borderRadius: 3, barPercentage: 0.75 }] },
@@ -320,7 +326,7 @@ function einfluss() {
                 layout: { padding: { right: 16 } },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: (c) => prozent(liste[c.dataIndex].anteil), afterLabel: (c) => `Quelle: ${QUELLEN[liste[c.dataIndex].quelle]}` } },
+                    tooltip: { callbacks: { label: (c) => prozent(liste[c.dataIndex].anteil), afterLabel: (c) => `Quelle: ${liste[c.dataIndex].herkunft}` } },
                     wertBeschriftung: { texte: liste.map((l) => prozent(l.anteil)) },
                 },
                 scales: {
@@ -337,6 +343,26 @@ function einfluss() {
             },
             plugins: [wertBeschriftung],
         });
+    };
+    const knoepfe = mitMorgen ? `<div class="knopfleiste" id="einfluss-knoepfe">
+            <button class="zeitraum-knopf aktiv" data-lage="rueckblick">im Nachhinein</button><button class="zeitraum-knopf" data-lage="vorhersage">für morgen</button>
+        </div>` : "";
+    return teil(`<section class="card">
+        <div class="card-kopf"><h2>Was den Ertrag bestimmt</h2>${knoepfe}</div>
+        <div class="chart-box"><canvas id="chart-einfluss"></canvas></div>
+    </section>`, () => {
+        if (mitMorgen) {
+            document.getElementById("einfluss-knoepfe").addEventListener("click", (ereignis) => {
+                const knopf = ereignis.target.closest(".zeitraum-knopf");
+                if (!knopf) {
+                    return;
+                }
+                zustand.lage = knopf.dataset.lage;
+                document.querySelectorAll("#einfluss-knoepfe .zeitraum-knopf").forEach((b) => b.classList.toggle("aktiv", b === knopf));
+                zeichnen();
+            });
+        }
+        zeichnen();
     });
 }
 
@@ -357,7 +383,7 @@ function datenquellen() {
     return teil(`<section class="card">
         <div class="card-kopf"><h2>Welche Daten abgerufen werden</h2><span class="legende">Daten zuletzt abgerufen ${zeitpunkt(abgerufen)} · Analyse zuletzt ${zeitpunkt(D.ergebnisse.trainiert_am)}</span></div>
         <div class="table-wrap"><table class="data-table">
-            <thead><tr><th>Quelle</th><th>Abgerufene Werte</th><th class="num">Anteil an der Prognose</th></tr></thead>
+            <thead><tr><th>Quelle</th><th>Abgerufene Werte</th><th class="num">Anteil im Nachhinein</th></tr></thead>
             <tbody>${zeilen}</tbody>
         </table></div>
     </section>`);

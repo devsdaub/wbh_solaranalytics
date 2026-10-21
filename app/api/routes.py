@@ -88,7 +88,7 @@ def report_production_gaps() -> dict:
 
 @router.get("/quality/weather-gaps")
 def report_weather_gaps() -> dict:
-    """Meldet Tage mit Produktion, aber ohne vollständige Wetterdaten."""
+    """Meldet Tage im Messzeitraum ohne vollständige Wetterdaten."""
     with SessionLocal() as session:
         plant_id = _current_plant_id(session)
     return find_weather_gaps(plant_id)

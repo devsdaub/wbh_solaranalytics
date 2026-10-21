@@ -100,6 +100,9 @@ def trainiere_und_bewerte(session: Session, plant_id: int = 1) -> dict:
 
     logger.info("Analyse: Permutation Importance")
     importance = berechne_importance(rueckblick, bestes, ALLE_MERKMALE)
+    # zweite Importance auf den Vorhersagemerkmalen: worauf sich die Prognose für morgen stützt
+    bestes_vorhersage = vergleiche["vorhersage"]["bestes_lernverfahren"]
+    importance_vorhersage = berechne_importance(vorhersage, bestes_vorhersage, VORHERSAGE_MERKMALE)
 
     vergleich = vergleiche["vorhersage"]
     haupt = vergleich["hauptschema"]
@@ -175,6 +178,7 @@ def trainiere_und_bewerte(session: Session, plant_id: int = 1) -> dict:
         },
         "ablation": {"modell": bestes, "konfigurationen": ablation},
         "importance": {"modell": bestes, "werte": importance},
+        "importance_vorhersage": {"modell": bestes_vorhersage, "werte": importance_vorhersage},
         "wetterlagen": wetterlagen,
         "quellen": quellen,
         "horizont": archiv["horizont"],
