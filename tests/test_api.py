@@ -29,11 +29,13 @@ def test_zeitreihe_hat_gleich_lange_reihen():
     assert len(laengen) == 1
 
 
-def test_prognose_und_modellvergleich_rendern():
-    for pfad in ("/prognose", "/analyse"):
-        antwort = client.get(pfad)
-        assert antwort.status_code == 200
-        assert "SolarAnalytics" in antwort.text
+def test_analytics_seite_rendert_mit_reitern():
+    antwort = client.get("/analytics")
+
+    assert antwort.status_code == 200
+    assert 'id="analytics"' in antwort.text
+    assert "/static/js/analytics.js" in antwort.text
+    assert 'href="/analytics" class="aktiv"' in antwort.text
 
 
 def test_analysestatus_meldet_den_lauf():
@@ -48,3 +50,11 @@ def test_verlauf_hat_alle_vorlaeufe_je_tag():
 
     assert len(tage) == 20
     assert {"ist", "p1", "u1", "o1", "p6"} <= set(tage[0])
+
+
+def test_einstellungen_zeigen_die_karte_analyse():
+    antwort = client.get("/settings")
+
+    assert antwort.status_code == 200
+    assert "Analyse jetzt neu rechnen" in antwort.text
+    assert "Jede Woche automatisch neu rechnen" in antwort.text

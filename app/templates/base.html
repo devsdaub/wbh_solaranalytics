@@ -8,10 +8,17 @@
 </head>
 <body>
     <nav class="navbar">
-        <a href="/" class="brand">SolarAnalytics</a>
+        <div class="nav-links">
+            <a href="/" class="brand">SolarAnalytics</a>
+            {% set pfad = request.url.path %}
+            <div class="reiter">
+                <a href="/" class="{{ 'aktiv' if pfad == '/' else '' }}">Dashboard</a>
+                <a href="/analytics" class="{{ 'aktiv' if pfad == '/analytics' else '' }}">Analytics</a>
+            </div>
+        </div>
         <div class="nav-rechts">
             {% set standort = anlage().location %}
-            <span class="coords">{{ standort.city }} · {{ "%.2f"|format(standort.latitude|abs) }}°{{ "N" if standort.latitude >= 0 else "S" }} {{ "%.2f"|format(standort.longitude|abs) }}°{{ "E" if standort.longitude >= 0 else "W" }}</span>
+            <span class="coords">{{ standort.city }} · {{ "%.2f"|format(standort.latitude|abs) }}°{{ "N" if standort.latitude >= 0 else "S" }} {{ "%.2f"|format(standort.longitude|abs) }}°{{ "E" if standort.longitude >= 0 else "W" }} · {{ anlage().panel.tilt_deg }}° Neigung</span>
             <a href="/settings" class="nav-icon" title="Einstellungen" aria-label="Einstellungen">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
                      stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
@@ -27,7 +34,7 @@
     </main>
 
     <footer class="footer">
-        Case Study und Bachelorarbeit · Wilhelm Büchner Hochschule
+        Bachelorarbeit · Wilhelm Büchner Hochschule
     </footer>
 
     <script src="/static/js/chart.umd.min.js"></script>

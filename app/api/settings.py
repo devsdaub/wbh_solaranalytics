@@ -1,14 +1,16 @@
 from fastapi import APIRouter, Form
 from fastapi.responses import RedirectResponse
 
+from app.api.analytics import starte_analyse
 from app.config import (
+    JobSettings,
     load_scheduler_config,
     load_sources_config,
     save_scheduler_config,
     save_sources_config,
 )
 from app.pipeline.ingestion import backfill_weather, run_pipeline
-from app.pipeline.scheduler import apply_config
+from app.pipeline.scheduler import ANALYSE_INTERVALL_MINUTEN, apply_config
 
 router = APIRouter(prefix="/settings", tags=["Einstellungen"])
 
@@ -34,16 +36,43 @@ def update_scheduler(
 def update_sources(
     open_meteo_weather: bool = Form(False),
     open_meteo_air: bool = Form(False),
+    open_meteo_satellit: bool = Form(False),
+    open_meteo_vorhersagearchiv: bool = Form(False),
     hoymiles_api: bool = Form(False),
 ) -> RedirectResponse:
     """Schaltet einzelne Datenquellen an oder ab."""
     settings = load_sources_config()
     settings.open_meteo_weather.enabled = open_meteo_weather
     settings.open_meteo_air.enabled = open_meteo_air
+    settings.open_meteo_satellit.enabled = open_meteo_satellit
+    settings.open_meteo_vorhersagearchiv.enabled = open_meteo_vorhersagearchiv
     settings.hoymiles_api.enabled = hoymiles_api
     save_sources_config(settings)
 
     return RedirectResponse("/settings?gespeichert=quellen", status_code=303)
+
+
+@router.post("/analyse")
+def update_analyse(woechentlich: bool = Form(False)) -> RedirectResponse:
+    """Schaltet den wöchentlichen Analyselauf an oder ab."""
+    settings = load_scheduler_config()
+    job = settings.jobs.setdefault(
+        "analyse", JobSettings(interval_minutes=ANALYSE_INTERVALL_MINUTEN, enabled=False)
+    )
+    job.enabled = woechentlich
+    save_scheduler_config(settings)
+
+    apply_config()
+
+    return RedirectResponse("/settings?gespeichert=analyse", status_code=303)
+
+
+@router.post("/analyse/run")
+def trigger_analyse_from_form() -> RedirectResponse:
+    """Startet den Analyselauf im Hintergrund und kehrt zur Settings-Seite zurück."""
+    if not starte_analyse():
+        return RedirectResponse("/settings?gespeichert=analyse_laeuft", status_code=303)
+    return RedirectResponse("/settings?gespeichert=analyse_gestartet", status_code=303)
 
 
 @router.post("/run")

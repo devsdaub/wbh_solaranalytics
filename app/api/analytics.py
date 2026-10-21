@@ -49,13 +49,20 @@ def status() -> dict:
     }
 
 
+def starte_analyse() -> bool:
+    """Startet den Analyselauf im Hintergrund, False, wenn schon einer rechnet."""
+    if not _sperre.acquire(blocking=False):
+        return False
+    _lauf.update(laeuft=True, gestartet=datetime.now(timezone.utc).isoformat(), fehler=None)
+    threading.Thread(target=_analyse_im_hintergrund, daemon=True).start()
+    return True
+
+
 @router.post("/train", status_code=202)
 def train() -> dict:
     """Startet Modellvergleich, Ablation und Importance im Hintergrund, Dauer einige Minuten."""
-    if not _sperre.acquire(blocking=False):
+    if not starte_analyse():
         raise HTTPException(status_code=409, detail="Ein Analyselauf läuft bereits")
-    _lauf.update(laeuft=True, gestartet=datetime.now(timezone.utc).isoformat(), fehler=None)
-    threading.Thread(target=_analyse_im_hintergrund, daemon=True).start()
     return {"gestartet": True}
 
 

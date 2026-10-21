@@ -9,7 +9,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select, text
 
+from app.analytics.artefakte import lade_ergebnisse
 from app.api.analytics import router as analytics_router
+from app.api.analytics import status as analysestatus
 from app.api.data import router as data_router
 from app.api.routes import router as api_router
 from app.api.settings import router as settings_router
@@ -116,14 +118,9 @@ def dashboard(request: Request):
     )
 
 
-@app.get("/prognose", response_class=HTMLResponse)
-def prognose_page(request: Request):
-    return templates.TemplateResponse(request, "prognose.html", {})
-
-
-@app.get("/analyse", response_class=HTMLResponse)
-def analyse_page(request: Request):
-    return templates.TemplateResponse(request, "analyse.html", {})
+@app.get("/analytics", response_class=HTMLResponse)
+def analytics_page(request: Request):
+    return templates.TemplateResponse(request, "analytics.html", {})
 
 
 @app.get("/settings", response_class=HTMLResponse)
@@ -148,6 +145,9 @@ def settings_page(
     if status["naechster_lauf"]:
         naechster = datetime.fromisoformat(status["naechster_lauf"])
 
+    ergebnisse = lade_ergebnisse()
+    analyse_am = datetime.fromisoformat(ergebnisse["trainiert_am"]) if ergebnisse else None
+
     return templates.TemplateResponse(
         request,
         "settings.html",
@@ -162,6 +162,9 @@ def settings_page(
             "gespeichert": gespeichert,
             "tage": tage,
             "zeilen": zeilen,
+            "analyse": analysestatus(),
+            "ergebnisse": ergebnisse,
+            "analyse_am": analyse_am,
             "zeitzone": zeitzone_kuerzel(),
         },
     )
