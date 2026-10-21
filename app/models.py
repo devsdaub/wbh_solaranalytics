@@ -30,6 +30,7 @@ class DailyFact(Base):
     date: Mapped[date]
     production_kwh: Mapped[float | None]
     gti_kwh: Mapped[float | None]
+    gti_satellit_kwh: Mapped[float | None]
     avg_temperature: Mapped[float | None]
     avg_cloud_cover: Mapped[int | None]
     max_dust: Mapped[float | None]
@@ -46,6 +47,7 @@ class HourlyWeather(Base):
     plant_id: Mapped[int] = mapped_column(ForeignKey("plant_config.id"))
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     gti: Mapped[float | None]
+    gti_satellit: Mapped[float | None]
     temperature: Mapped[float | None]
     cloud_cover: Mapped[int | None]
     cloud_cover_low: Mapped[int | None]
@@ -56,6 +58,40 @@ class HourlyWeather(Base):
     dust: Mapped[float | None]
     pm10: Mapped[float | None]
     aerosol_od: Mapped[float | None]
+
+
+class HourlyForecast(Base):
+    __tablename__ = "hourly_forecast"
+    __table_args__ = (UniqueConstraint("plant_id", "timestamp", "vorlauf"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    plant_id: Mapped[int] = mapped_column(ForeignKey("plant_config.id"))
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    vorlauf: Mapped[int]
+    gti: Mapped[float | None]
+    temperature: Mapped[float | None]
+    cloud_cover: Mapped[int | None]
+    sunshine_duration: Mapped[float | None]
+
+
+class PrognoseArchiv(Base):
+    __tablename__ = "prognose_archiv"
+    __table_args__ = (UniqueConstraint("plant_id", "zieltag", "vorlauf", "verfahren"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    plant_id: Mapped[int] = mapped_column(ForeignKey("plant_config.id"))
+    stichtag: Mapped[date]
+    zieltag: Mapped[date]
+    vorlauf: Mapped[int]
+    verfahren: Mapped[str]
+    herkunft: Mapped[str]
+    gti_kwh: Mapped[float | None]
+    sonnenstunden: Mapped[float | None]
+    quote: Mapped[float | None]
+    prognose_kwh: Mapped[float | None]
+    unten_kwh: Mapped[float | None]
+    oben_kwh: Mapped[float | None]
+    erstellt_am: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class PowerReading(Base):

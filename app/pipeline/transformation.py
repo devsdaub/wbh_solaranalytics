@@ -18,6 +18,7 @@ MIN_STUNDEN = 23
 
 DAILY_UPDATE_COLUMNS = (
     "gti_kwh",
+    "gti_satellit_kwh",
     "avg_temperature",
     "avg_cloud_cover",
     "max_dust",
@@ -32,10 +33,14 @@ def aggregate_hourly(frame: pd.DataFrame, plant_id: int) -> pd.DataFrame:
     if frame.empty:
         return pd.DataFrame(columns=["plant_id", "date", *DAILY_UPDATE_COLUMNS[:-1]])
 
+    frame = frame.copy()
+    if "gti_satellit" not in frame:
+        frame["gti_satellit"] = float("nan")
     tage = frame["timestamp"].dt.tz_convert(LOCAL_TZ).dt.date
 
     taeglich = frame.assign(date=tage).groupby("date").agg(
         gti_kwh=("gti", lambda werte: werte.sum(min_count=1) / 1000.0),
+        gti_satellit_kwh=("gti_satellit", lambda werte: werte.sum(min_count=20) / 1000.0),
         avg_temperature=("temperature", "mean"),
         avg_cloud_cover=("cloud_cover", "mean"),
         max_dust=("dust", "max"),
@@ -80,6 +85,7 @@ def _lade_stundenwerte(plant_id: int) -> pd.DataFrame:
     statement = select(
         HourlyWeather.timestamp,
         HourlyWeather.gti,
+        HourlyWeather.gti_satellit,
         HourlyWeather.temperature,
         HourlyWeather.cloud_cover,
         HourlyWeather.dust,

@@ -1,19 +1,22 @@
 from app.adapters.open_meteo import OpenMeteoAdapter
 from app.schemas import HOURLY_WEATHER_SCHEMA
+from app.standorte import Standort
 
 
 def to_open_meteo_azimuth(azimuth_deg: float) -> float:
-    """Rechnet einen Nord-basierten Azimut in die Konvention von Open-Meteo um.
-
-    Anlagendaten sind Nord-basiert (0 = Nord, 180 = Süd, 270 = West).
-    Open-Meteo erwartet Süd-basierte Werte zwischen -180 und 180
-    (0 = Süd, -90 = Ost, +90 = West).
-    """
+    """Nord-basiert (180 = Süd) in Open-Meteo-Konvention (0 = Süd, -90 = Ost)."""
     return (azimuth_deg % 360) - 180
 
 
+def flaechen_params(standort: Standort) -> dict:
+    return {
+        "tilt": standort.tilt_deg,
+        "azimuth": to_open_meteo_azimuth(standort.azimuth_deg),
+    }
+
+
 class OpenMeteoWeatherAdapter(OpenMeteoAdapter):
-    """Liest stündliche Wetterdaten aus dem Open-Meteo-Archiv."""
+    """Stündliches Wetter im Rückblick, aus den ICON-D2-Analysen."""
 
     name = "open_meteo_weather"
     schema = HOURLY_WEATHER_SCHEMA
@@ -23,8 +26,5 @@ class OpenMeteoWeatherAdapter(OpenMeteoAdapter):
         "temperature_2m": "temperature",
     }
 
-    def extra_params(self) -> dict:
-        return {
-            "tilt": self.plant.panel.tilt_deg,
-            "azimuth": to_open_meteo_azimuth(self.plant.panel.azimuth_deg),
-        }
+    def extra_params(self, standort: Standort) -> dict:
+        return flaechen_params(standort)

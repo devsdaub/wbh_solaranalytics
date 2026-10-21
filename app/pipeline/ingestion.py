@@ -10,11 +10,14 @@ from sqlalchemy.dialects.postgresql import insert
 from app.adapters.hoymiles_api import HoymilesApiAdapter
 from app.adapters.hoymiles_csv import HoymilesEnergyAdapter
 from app.adapters.open_meteo_air import OpenMeteoAirAdapter
+from app.adapters.open_meteo_satellit import OpenMeteoSatellitAdapter
+from app.adapters.open_meteo_vorhersage import OpenMeteoVorhersagearchivAdapter
 from app.adapters.open_meteo_weather import OpenMeteoWeatherAdapter
 from app.config import load_hoymiles_auth, load_plant_config, load_sources_config
-from app.database import SessionLocal
-from app.models import DailyFact, HourlyWeather, PipelineRun, PlantConfig
+from app.database import SessionLocal, engine
+from app.models import DailyFact, HourlyForecast, HourlyWeather, PipelineRun, PlantConfig
 from app.pipeline.transformation import (
+    LOCAL_TZ,
     aggregate_daily,
     find_production_gaps,
     finde_wetterluecken,
@@ -24,15 +27,21 @@ from app.pipeline.util import to_records
 
 logger = logging.getLogger(__name__)
 
+# Quelle: (Adapter, Zieltabelle, Schlüsselspalten)
 ADAPTERS = {
-    "open_meteo_weather": OpenMeteoWeatherAdapter,
-    "open_meteo_air": OpenMeteoAirAdapter,
+    "open_meteo_weather": (OpenMeteoWeatherAdapter, HourlyWeather, ("plant_id", "timestamp")),
+    "open_meteo_air": (OpenMeteoAirAdapter, HourlyWeather, ("plant_id", "timestamp")),
+    "open_meteo_satellit": (OpenMeteoSatellitAdapter, HourlyWeather, ("plant_id", "timestamp")),
+    "open_meteo_vorhersagearchiv": (
+        OpenMeteoVorhersagearchivAdapter, HourlyForecast, ("plant_id", "timestamp", "vorlauf"),
+    ),
 }
-
-KEY_COLUMNS = ("plant_id", "timestamp")
 
 # Obergrenze je Lauf. Der Rest kommt beim nächsten Durchlauf dran.
 BACKFILL_MAX_BLOECKE = 12
+
+# Postgres erlaubt höchstens 65535 Parameter je Anweisung
+ZEILEN_JE_BLOCK = 4000
 
 
 def _current_plant_id(session) -> int:
@@ -46,10 +55,11 @@ def _current_plant_id(session) -> int:
 def ingest_source(
     name: str, start: date | None = None, end: date | None = None
 ) -> dict:
-    """Holt die Daten einer Wetterquelle und schreibt sie nach hourly_weather."""
+    """Holt die Daten einer Open-Meteo-Quelle und schreibt sie in ihre Tabelle."""
     if name not in ADAPTERS:
         return {"status": "fehler", "grund": f"Unbekannte Quelle: {name}"}
 
+    adapter_klasse, tabelle, schluessel = ADAPTERS[name]
     plant_settings = load_plant_config()
     source = getattr(load_sources_config(), name)
 
@@ -65,7 +75,7 @@ def ingest_source(
     with SessionLocal() as session:
         plant_id = _current_plant_id(session)
 
-        adapter = ADAPTERS[name](plant_settings, source, plant_id)
+        adapter = adapter_klasse(plant_settings, source, plant_id)
 
         try:
             frame = adapter.fetch(start, end)
@@ -76,19 +86,15 @@ def ingest_source(
                     "grund": str(fehler).splitlines()[0][:300]}
 
         records = to_records(frame)
+        update_columns = [s for s in frame.columns if s not in schluessel]
 
-        update_columns = [
-            spalte for spalte in frame.columns if spalte not in KEY_COLUMNS
-        ]
-
-        statement = insert(HourlyWeather).values(records)
-        statement = statement.on_conflict_do_update(
-            index_elements=list(KEY_COLUMNS),
-            set_={
-                spalte: statement.excluded[spalte] for spalte in update_columns
-            },
-        )
-        session.execute(statement)
+        for beginn in range(0, len(records), ZEILEN_JE_BLOCK):
+            statement = insert(tabelle).values(records[beginn:beginn + ZEILEN_JE_BLOCK])
+            statement = statement.on_conflict_do_update(
+                index_elements=list(schluessel),
+                set_={spalte: statement.excluded[spalte] for spalte in update_columns},
+            )
+            session.execute(statement)
         session.commit()
 
     return {
@@ -101,19 +107,27 @@ def ingest_source(
 
 
 def ingest_all(start: date | None = None, end: date | None = None) -> list[dict]:
-    """Ruft alle konfigurierten Wetterquellen für denselben Zeitraum ab."""
+    """Ruft alle konfigurierten Open-Meteo-Quellen für denselben Zeitraum ab."""
     return [ingest_source(name, start, end) for name in ADAPTERS]
 
 
-def backfill_weather() -> dict:
-    """Lädt Wetterdaten für Tage nach, an denen nur Produktion vorliegt."""
-    with SessionLocal() as session:
-        plant_id = _current_plant_id(session)
+def lade_vorhersagelage(plant_id: int) -> pd.DataFrame:
+    """Je Tag die Produktion und die Zahl archivierter Vorhersagestunden mit Vorlauf 1."""
+    stunden = pd.read_sql(
+        select(HourlyForecast.timestamp)
+        .where(HourlyForecast.plant_id == plant_id, HourlyForecast.vorlauf == 1,
+               HourlyForecast.gti.is_not(None)),
+        engine,
+    )
+    tage = lade_tageslage(plant_id)[["date", "production_kwh"]]
+    if stunden.empty:
+        return tage.assign(hours=None)
+    lokal = pd.to_datetime(stunden["timestamp"], utc=True).dt.tz_convert(LOCAL_TZ).dt.date
+    zaehler = lokal.value_counts().rename("hours")
+    return tage.merge(zaehler, left_on="date", right_index=True, how="left")
 
-    bloecke = finde_wetterluecken(lade_tageslage(plant_id))
-    if not bloecke:
-        return {"status": "ok", "bloecke": 0, "tage": 0, "datensaetze": 0}
 
+def _nachladen(bloecke: list[dict], quellen: list[str]) -> int:
     if len(bloecke) > BACKFILL_MAX_BLOECKE:
         logger.warning(
             "%s Lückenblöcke gefunden, davon werden %s nachgeladen",
@@ -125,16 +139,32 @@ def backfill_weather() -> dict:
     for block in bloecke:
         von = block["von"] - timedelta(days=1)
         bis = min(block["bis"] + timedelta(days=1), date.today())
+        logger.info("Backfill %s bis %s, %s Tage, %s",
+                    block["von"], block["bis"], block["tage"], ", ".join(quellen))
+        for name in quellen:
+            datensaetze += ingest_source(name, von, bis).get("datensaetze", 0)
+    return datensaetze
 
-        logger.info("Backfill %s bis %s, %s Tage",
-                    block["von"], block["bis"], block["tage"])
-        for ergebnis in ingest_all(von, bis):
-            datensaetze += ergebnis.get("datensaetze", 0)
+
+def backfill_weather() -> dict:
+    """Lädt Wetter und archivierte Vorhersagen für Tage nach, an denen nur Produktion vorliegt."""
+    with SessionLocal() as session:
+        plant_id = _current_plant_id(session)
+
+    wetter = finde_wetterluecken(lade_tageslage(plant_id))
+    vorhersage = finde_wetterluecken(lade_vorhersagelage(plant_id))
+    if not wetter and not vorhersage:
+        return {"status": "ok", "bloecke": 0, "tage": 0, "datensaetze": 0}
+
+    datensaetze = _nachladen(
+        wetter, ["open_meteo_weather", "open_meteo_air", "open_meteo_satellit"]
+    )
+    datensaetze += _nachladen(vorhersage, ["open_meteo_vorhersagearchiv"])
 
     return {
         "status": "ok",
-        "bloecke": len(bloecke),
-        "tage": sum(block["tage"] for block in bloecke),
+        "bloecke": len(wetter) + len(vorhersage),
+        "tage": sum(block["tage"] for block in wetter + vorhersage),
         "datensaetze": datensaetze,
     }
 
@@ -275,12 +305,23 @@ def import_energy_report(path: Path) -> dict:
     }
 
 
+def _pflege_prognosen(plant_id: int) -> dict:
+    # erst hier importiert, die Analyse hängt selbst an der Pipeline
+    from app.analytics.prognose import pflege_prognosearchiv
+
+    try:
+        return pflege_prognosearchiv(plant_id)
+    except Exception as fehler:
+        logger.exception("Prognosearchiv nicht aktualisiert")
+        return {"status": "fehler", "grund": str(fehler)[:300]}
+
+
 def run_pipeline(
     start: date | None = None,
     end: date | None = None,
     trigger: str = "manuell",
 ) -> dict:
-    """Ruft alle Quellen ab und verdichtet anschliessend auf Tageswerte."""
+    """Ruft alle Quellen ab, verdichtet auf Tageswerte und führt das Prognosearchiv fort."""
     lauf = PipelineRun(
         started_at=datetime.now(timezone.utc),
         trigger=trigger,
@@ -303,6 +344,7 @@ def run_pipeline(
 
         aggregation = aggregate_daily(plant_id)
         luecken = find_production_gaps(plant_id)
+        prognosen = _pflege_prognosen(plant_id)
 
         ungueltig = [q["quelle"] for q in quellen if q["status"] == "ungueltig"]
 
@@ -312,6 +354,7 @@ def run_pipeline(
             "backfill": nachgeladen,
             "aggregation": aggregation,
             "datenqualitaet": luecken,
+            "prognosearchiv": prognosen,
         }
         _lauf_abschliessen(
             lauf_id,

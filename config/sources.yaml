@@ -1,7 +1,8 @@
 sources:
   open_meteo_weather:
     enabled: true
-    url: https://archive-api.open-meteo.com/v1/archive
+    url: https://historical-forecast-api.open-meteo.com/v1/forecast
+    models: icon_d2
     default_days_back: 30
     variables:
     - global_tilted_irradiance
@@ -20,6 +21,40 @@ sources:
     - dust
     - pm10
     - aerosol_optical_depth
+  open_meteo_satellit:
+    enabled: true
+    url: https://satellite-api.open-meteo.com/v1/archive
+    models: eumetsat_sarah3
+    default_days_back: 30
+    variables:
+    - global_tilted_irradiance
+  open_meteo_vorhersagearchiv:
+    enabled: true
+    url: https://previous-runs-api.open-meteo.com/v1/forecast
+    models: icon_seamless
+    default_days_back: 10
+    max_vorlauf: 6
+    variables:
+    - global_tilted_irradiance
+    - temperature_2m
+    - cloud_cover
+    - sunshine_duration
+  open_meteo_vorhersage:
+    enabled: true
+    url: https://api.open-meteo.com/v1/forecast
+    models: icon_seamless
+    default_days_back: 0
+    max_vorlauf: 6
+    variables:
+    - global_tilted_irradiance
+    - temperature_2m
+    - cloud_cover
+    - cloud_cover_low
+    - cloud_cover_mid
+    - cloud_cover_high
+    - visibility
+    - sunshine_duration
+    - precipitation
   hoymiles_api:
     enabled: true
     url: https://neapi.hoymiles.com
