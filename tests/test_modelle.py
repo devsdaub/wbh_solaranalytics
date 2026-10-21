@@ -55,3 +55,21 @@ def test_alle_drei_pipelines_lernen_und_prognostizieren():
         prognose = pipeline.fit(X, y).predict(X)
         assert prognose.shape == (60,), name
         assert np.isfinite(prognose).all(), name
+
+
+def test_faustregel_trennt_standorte():
+    """Am alten Balkon war die Quote durch Schatten niedriger, sie darf den neuen nicht verfälschen."""
+    training = tage([date(2026, 1, d) for d in range(1, 7)], [1.0, 1.0, 1.0, 3.0, 3.0, 3.0],
+                    gti=[4.0] * 6).assign(standort=[0, 0, 0, 1, 1, 1])
+    test = tage([date(2026, 3, 1)], [None], gti=[4.0]).assign(standort=[1])
+
+    assert faustregel(training, test) == pytest.approx([3.0])
+
+
+def test_faustregel_nimmt_die_stufe_der_sonnenhoehe_ab_zehn_tagen():
+    hoch = tage([date(2026, 6, d) for d in range(1, 11)], [4.0] * 10, gti=[4.0] * 10).assign(mittagshoehe_grad=60.0)
+    tief = tage([date(2026, 12, d) for d in range(1, 11)], [1.0] * 10, gti=[4.0] * 10).assign(mittagshoehe_grad=18.0)
+    training = pd.concat([hoch, tief], ignore_index=True)
+    test = tage([date(2027, 1, 5)], [None], gti=[2.0]).assign(mittagshoehe_grad=19.0)
+
+    assert faustregel(training, test) == pytest.approx([0.5])
