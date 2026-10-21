@@ -1,3 +1,6 @@
+# Nur für die Entwicklung auf dem PC: baut das Image selbst und bindet den Code ein.
+# Für das NAS deploy/nas/docker-compose.yml nehmen, die zieht das fertige Image.
+
 services:
   db:
     image: postgres:16-alpine
