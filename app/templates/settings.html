@@ -89,10 +89,10 @@
     </form>
     <p class="empty">
         {% if wetterluecken.fehlende_tage %}
-        Für {{ wetterluecken.fehlende_tage }} Tage mit Produktion fehlen noch
+        Für {{ wetterluecken.fehlende_tage }} Tage im Messzeitraum fehlen noch
         vollständige Wetterdaten.
         {% else %}
-        Zu allen Tagen mit Produktion liegen vollständige Wetterdaten vor.
+        Zu allen Tagen im Messzeitraum liegen vollständige Wetterdaten vor.
         {% endif %}
         Gespeichert wird in <code>config/scheduler.yaml</code>.
     </p>

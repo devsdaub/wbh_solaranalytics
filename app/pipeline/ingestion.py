@@ -147,7 +147,7 @@ def _nachladen(bloecke: list[dict], quellen: list[str]) -> int:
 
 
 def backfill_weather() -> dict:
-    """Lädt Wetter und archivierte Vorhersagen für Tage nach, an denen nur Produktion vorliegt."""
+    """Lädt Wetter und archivierte Vorhersagen für alle Tage im Messzeitraum nach, denen Stundenwerte fehlen."""
     with SessionLocal() as session:
         plant_id = _current_plant_id(session)
 

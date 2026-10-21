@@ -101,9 +101,8 @@ def test_luecke_nur_innerhalb_des_messzeitraums():
     assert finde_luecken(frame) == []
 
 
-def test_wetterluecke_braucht_einen_produktionswert():
-    """Ohne diese Bedingung würde der Backfill den angebrochenen Randtag
-    bei jedem Lauf erneut abrufen."""
+def test_wetterluecke_endet_mit_der_letzten_messung():
+    """Sonst würde der Backfill den angebrochenen Randtag bei jedem Lauf erneut abrufen."""
     frame = pd.DataFrame({
         "date": [date(2026, 3, 1), date(2026, 3, 2)],
         "production_kwh": [3.0, None],
@@ -113,3 +112,16 @@ def test_wetterluecke_braucht_einen_produktionswert():
     luecken = finde_wetterluecken(frame)
 
     assert [b["von"] for b in luecken] == [date(2026, 3, 1)]
+
+
+def test_wetterluecke_umfasst_ausfalltage_ohne_produktion():
+    """Fällt der Wechselrichter aus, soll trotzdem Wetter für diese Tage da sein."""
+    frame = pd.DataFrame({
+        "date": [date(2026, 3, 1), date(2026, 3, 2), date(2026, 3, 4), date(2026, 3, 5)],
+        "production_kwh": [2.0, None, 1.0, None],
+        "hours": [24, None, 24, 3],
+    })
+
+    luecken = finde_wetterluecken(frame)
+
+    assert luecken == [{"von": date(2026, 3, 2), "bis": date(2026, 3, 3), "tage": 2}]

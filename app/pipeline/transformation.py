@@ -150,14 +150,18 @@ def finde_luecken(frame: pd.DataFrame) -> list[dict]:
 
 
 def finde_wetterluecken(frame: pd.DataFrame) -> list[dict]:
-    """Tage mit Produktionswert, aber ohne vollständige Stundenwerte."""
-    if frame.empty:
+    """Tage im Messzeitraum ohne vollständige Stundenwerte, Ausfalltage ohne Produktion eingeschlossen."""
+    gemessen = frame.dropna(subset=["production_kwh"])
+    if gemessen.empty:
         return []
 
-    unvollstaendig = frame["hours"].isna() | (frame["hours"] < MIN_STUNDEN)
-    return zu_bloecken(
-        sorted(frame[frame["production_kwh"].notna() & unvollstaendig]["date"])
-    )
+    # nach der letzten Messung endet der Zeitraum, sonst käme der angebrochene Tag bei jedem Lauf
+    kalender = pd.date_range(gemessen["date"].min(), gemessen["date"].max(), freq="D").date
+    stunden = dict(zip(frame["date"], frame["hours"]))
+    return zu_bloecken([
+        tag for tag in kalender
+        if pd.isna(stunden.get(tag)) or stunden[tag] < MIN_STUNDEN
+    ])
 
 
 def find_production_gaps(plant_id: int) -> dict:
@@ -172,7 +176,7 @@ def find_production_gaps(plant_id: int) -> dict:
 
 
 def find_weather_gaps(plant_id: int) -> dict:
-    """Findet Tage mit Produktion, aber ohne vollständige Wetterdaten."""
+    """Findet Tage im Messzeitraum ohne vollständige Wetterdaten."""
     bloecke = finde_wetterluecken(lade_tageslage(plant_id))
     return {
         "fehlende_tage": sum(block["tage"] for block in bloecke),
