@@ -4,3 +4,6 @@ scheduler:
     pipeline:
       interval_minutes: 20
       enabled: true
+    analyse:
+      interval_minutes: 10080
+      enabled: true

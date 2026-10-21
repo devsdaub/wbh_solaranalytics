@@ -50,3 +50,11 @@ def test_verlauf_hat_alle_vorlaeufe_je_tag():
 
     assert len(tage) == 20
     assert {"ist", "p1", "u1", "o1", "p6"} <= set(tage[0])
+
+
+def test_einstellungen_zeigen_die_karte_analyse():
+    antwort = client.get("/settings")
+
+    assert antwort.status_code == 200
+    assert "Analyse jetzt neu rechnen" in antwort.text
+    assert "Jede Woche automatisch neu rechnen" in antwort.text

@@ -32,6 +32,10 @@
     {% if tage %}Wetterdaten für {{ tage }} Tage nachgeladen.
     {% else %}Es fehlten keine Wetterdaten.{% endif %}
 </div>
+{% elif gespeichert == "analyse_gestartet" %}
+<div class="hinweis hinweis-ok">Analyse gestartet, sie rechnet einige Minuten im Hintergrund.</div>
+{% elif gespeichert == "analyse_laeuft" %}
+<div class="hinweis hinweis-fehler">Es läuft bereits eine Analyse.</div>
 {% elif gespeichert == "fehler" %}
 <div class="hinweis hinweis-fehler">
     Pipeline-Lauf fehlgeschlagen. Einzelheiten stehen in der Historie.
@@ -128,6 +132,30 @@
     <p class="empty">
         Abgeschaltete Quellen werden beim Pipeline-Lauf übersprungen. Die
         Änderung wirkt ab dem nächsten Durchlauf, ohne Neustart.
+    </p>
+</section>
+
+<section class="card">
+    <h2>Analyse</h2>
+    <form action="/settings/analyse" method="post" class="einstellungen">
+        <label class="checkbox">
+            <input type="checkbox" name="woechentlich" value="true" onchange="this.form.submit()"
+                   {{ "checked" if scheduler.jobs.get("analyse") and scheduler.jobs["analyse"].enabled else "" }}>
+            <span>Jede Woche automatisch neu rechnen</span>
+        </label>
+    </form>
+    <form action="/settings/analyse/run" method="post" class="einstellungen">
+        <button type="submit" {{ "disabled" if analyse.lauf.laeuft else "" }}>Analyse jetzt neu rechnen</button>
+    </form>
+    <p class="empty">
+        {% if analyse.lauf.laeuft %}
+        Die Analyse rechnet gerade, das dauert einige Minuten.
+        {% elif ergebnisse %}
+        Letzter Lauf am {{ analyse_am|lokal("%d.%m.%Y, %H:%M") }}, {{ ergebnisse.daten.tage }} Tage.
+        {% else %}
+        Noch kein Analyselauf.
+        {% endif %}
+        Rechnet alle Verfahren gegen die Vergangenheit und nimmt das genaueste für die Prognose{% if ergebnisse %}, zurzeit {{ ergebnisse.bezeichnungen[ergebnisse.eingesetzt.verfahren] }}{% endif %}.
     </p>
 </section>
 </div>
