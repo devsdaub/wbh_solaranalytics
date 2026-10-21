@@ -22,11 +22,13 @@ Jeder Push trägt zwei Tags: `latest` und `sha-xxxxxxx` mit dem Kurz-Hash des Co
    Die Zugangsdaten stehen weder im Git noch im Image, nur so kommt die Hoymiles-Anbindung
    aufs NAS. Bleibt der Ordner leer, legt der Container beim Start die Standarddateien
    hinein und läuft ohne Hoymiles.
-3. **Zugang zur Registry:** Das Repository ist privat, das Paket damit auch. Läuft MingHub
-   schon über Portainer, ist `ghcr.io` dort eingetragen. Derselbe Token mit
-   `read:packages` gilt für alle Pakete von devsdaub. Sonst in Portainer: Registries → Add
-   registry → Custom registry → URL `ghcr.io`, Authentication an, Username `devsdaub`,
-   Password der Token.
+3. **Zugang zur Registry:** Das Paket einmal öffentlich stellen, dann braucht das NAS keine
+   Anmeldung: GitHub → Packages → `wbh-solaranalytics` → Package settings → Danger Zone →
+   Change visibility → Public. Ein öffentliches Repository reicht dafür nicht, die
+   Sichtbarkeit des Pakets wird getrennt eingestellt. Das Image enthält keine
+   Zugangsdaten. Bleibt das Paket privat, geht es mit dem Token mit `read:packages`, der
+   auch für MingHub gilt, in Portainer unter Registries oder per SSH mit
+   `docker login ghcr.io -u devsdaub`.
 4. **Stack anlegen:** Portainer → Stacks → Add stack → Name `solaranalytics` → Web editor
    → Inhalt von `docker-compose.yml` aus diesem Ordner einfügen → Environment variables →
    „Advanced mode“ → Inhalt von `stack.env.example` einfügen, `DB_PASSWORD` ersetzen →
@@ -35,12 +37,10 @@ Jeder Push trägt zwei Tags: `latest` und `sha-xxxxxxx` mit dem Kurz-Hash des Co
    Portfreigabe im Router einrichten.
 
 Ohne Portainer geht es auch in UGOS Pro unter Docker → Projekt → Erstellen. Dann die Werte
-aus `stack.env.example` direkt in die Compose-Datei schreiben und vorher per SSH einmal
-anmelden:
-
-```bash
-docker login ghcr.io -u devsdaub
-```
+aus `stack.env.example` direkt in die Compose-Datei schreiben. Wichtig ist die Datei aus
+diesem Ordner, nicht die `docker-compose.yml` im Hauptordner: Die ist für den PC und will
+das Image selbst bauen, auf dem NAS endet das mit „open Dockerfile: no such file or
+directory“.
 
 ## Daten vom PC übernehmen
 
