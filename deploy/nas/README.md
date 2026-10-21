@@ -44,9 +44,13 @@ directory“.
 
 ## Daten vom PC übernehmen
 
-Empfohlen. Messwerte und Wetter holt die Pipeline auf dem NAS selbst nach, die abends
-festgeschriebenen Prognosen seit dem 14.10.2026 stehen aber nur in der Datenbank auf dem
-PC. Auf dem PC im Repository-Ordner:
+Meist nicht nötig. Messwerte und Wetter holt die Pipeline auf dem NAS selbst nach, das
+Prognosearchiv rechnet sie für vergangene Tage im Rückblick nach. Auf einer frischen
+Instanz fehlen nur die Prognosen, die eine andere Instanz abends live festgeschrieben hat.
+Beim Umzug am 21.10.2026 waren das die sechs Zeilen vom 14.10. aus dem Vorbau, eingespielt
+mit einer einzelnen SQL-Datei statt eines ganzen Abzugs.
+
+Soll doch die ganze Datenbank umziehen, auf dem PC im Repository-Ordner:
 
 ```bash
 docker compose exec -T db pg_dump -U solar -d solaranalytics --clean --if-exists -f /tmp/solaranalytics.sql
