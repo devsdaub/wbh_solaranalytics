@@ -16,6 +16,12 @@ COPY pytest.ini .
 COPY app/ ./app/
 COPY tests/ ./tests/
 
+# Standardkonfiguration ohne Zugangsdaten, wird beim Start in einen leeren config-Ordner kopiert
+COPY config/ ./config_vorlage/
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 8000
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

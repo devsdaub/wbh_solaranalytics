@@ -4,3 +4,5 @@ uploads/*
 config/*_auth.yaml
 *.csv
 !beispieldaten/*.csv
+# Datenbank-Abzüge für den Umzug aufs NAS
+*.sql

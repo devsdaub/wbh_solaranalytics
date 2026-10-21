@@ -11,3 +11,8 @@ docs/
 README.md
 COACHING.md
 *.md
+config/*_auth.yaml
+analytics_artifacts/
+ergebnisse/
+deploy/
+.github/
