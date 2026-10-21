@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.adapters.open_meteo_vorhersage import OpenMeteoVorhersageAdapter
 from app.analytics.artefakte import lade_ergebnisse, lade_modell
+from app.analytics.auswahl import STANDARD, eingesetztes_verfahren
 from app.analytics.bewertung import JAHRESZEITEN, kennzahlen
 from app.analytics.merkmale import (
     AUSFALL_SCHWELLE_KWH,
@@ -29,7 +30,8 @@ from app.standorte import ist_uebergang, standort_am, standortnummern
 logger = logging.getLogger(__name__)
 
 LOKAL = ZoneInfo("Europe/Berlin")
-VERFAHREN = "faustregel_nachgefuehrt"
+# das Archiv im Rückblick lässt sich nur für die Faustregel über alle Vorläufe nachrechnen
+VERFAHREN = STANDARD
 
 # ab dieser Ortszeit wird die Prognose des Tages festgeschrieben
 ARCHIV_AB_STUNDE = 20
@@ -82,14 +84,14 @@ def _vorhersage_tage(session, plant_id: int, vorlauf: int) -> pd.DataFrame:
     return verdichte_auf_tage(stunden)[["date", "gti_kwh_m2", "sonnenstunden"]]
 
 
-def lade_archiv(session, plant_id: int) -> pd.DataFrame:
-    """Alle festgeschriebenen Prognosen des eingesetzten Verfahrens, mit Messung und Standort."""
+def lade_archiv(session, plant_id: int, verfahren: str = VERFAHREN) -> pd.DataFrame:
+    """Alle festgeschriebenen Prognosen eines Verfahrens, mit Messung und Standort."""
     zeilen = session.execute(
         select(PrognoseArchiv.stichtag, PrognoseArchiv.zieltag, PrognoseArchiv.vorlauf,
                PrognoseArchiv.herkunft, PrognoseArchiv.gti_kwh, PrognoseArchiv.sonnenstunden,
                PrognoseArchiv.quote, PrognoseArchiv.prognose_kwh, PrognoseArchiv.unten_kwh,
                PrognoseArchiv.oben_kwh)
-        .where(PrognoseArchiv.plant_id == plant_id, PrognoseArchiv.verfahren == VERFAHREN)
+        .where(PrognoseArchiv.plant_id == plant_id, PrognoseArchiv.verfahren == verfahren)
         .order_by(PrognoseArchiv.zieltag)
     ).all()
     archiv = pd.DataFrame(zeilen, columns=[
@@ -115,11 +117,11 @@ def berechne_spanne(verlauf: pd.DataFrame, bis: date, standort: float,
     return max(prognose + min(unten, 0.0), 0.0), prognose + max(oben, 0.0)
 
 
-def _schreibe(plant_id: int, zeilen: list[dict]) -> int:
+def _schreibe(plant_id: int, zeilen: list[dict], verfahren: str = VERFAHREN) -> int:
     if not zeilen:
         return 0
     erstellt = datetime.now(timezone.utc)
-    werte = [{"plant_id": plant_id, "verfahren": VERFAHREN, "erstellt_am": erstellt, **z} for z in zeilen]
+    werte = [{"plant_id": plant_id, "verfahren": verfahren, "erstellt_am": erstellt, **z} for z in zeilen]
     with SessionLocal() as session:
         for beginn in range(0, len(werte), 2000):
             statement = insert(PrognoseArchiv).values(werte[beginn:beginn + 2000])
@@ -227,10 +229,17 @@ def prognostiziere(plant_id: int = 1, neu_abrufen: bool = False) -> dict:
     lokal = pd.to_datetime(stunden["timestamp"], utc=True).dt.tz_convert(LOKAL).dt.date
     regen = stunden.assign(date=lokal).groupby("date")["precipitation"].sum()
 
+    lern_name, lern_werte = _lernverfahren(taeglich)
+    verfahren = eingesetztes_verfahren()
+    if verfahren != STANDARD and (lern_name != verfahren or lern_werte is None):
+        logger.warning("Modell für %s fehlt, die Prognose rechnet mit %s", verfahren, STANDARD)
+        verfahren = STANDARD
+
     with SessionLocal() as session:
         messungen = _messungen(session, plant_id)
         vortag = _vorhersage_tage(session, plant_id, 1)
         archiv = lade_archiv(session, plant_id)
+        eigenes = lade_archiv(session, plant_id, verfahren) if verfahren != STANDARD else archiv
 
     historie = messungen.merge(vortag, on="date", how="inner")
     historie["standort"] = standortnummern(plant, historie["date"]).to_numpy()
@@ -240,16 +249,18 @@ def prognostiziere(plant_id: int = 1, neu_abrufen: bool = False) -> dict:
         ertragsquote(historie), historie["standort"].to_numpy(dtype=float),
         np.datetime64(stichtag - timedelta(days=1)), float(aktuell),
     )
-    lern_name, lern_werte = _lernverfahren(taeglich)
     tageslaenge = _tageslaenge(taeglich["date"])
 
     tage = []
     for i, zeile in enumerate(taeglich.itertuples()):
         vorlauf = (zeile.date - stichtag).days
-        prognose = quote * zeile.gti_kwh_m2
+        prognose = quote * zeile.gti_kwh_m2 if verfahren == STANDARD else float(lern_werte[i])
         stufe = min(max(vorlauf, 1), max_vorlauf())
-        unten, oben = berechne_spanne(
-            archiv[archiv["vorlauf"] == stufe], stichtag - timedelta(days=1), aktuell, prognose)
+        # bis das neue Verfahren genug eigene bewertete Tage hat, kommt die Spanne aus dem Archiv der Faustregel
+        verlauf_stufe = eigenes[(eigenes["vorlauf"] == stufe) & eigenes["ist"].notna()]
+        if len(verlauf_stufe) < MIN_TAGE_SPANNE:
+            verlauf_stufe = archiv[archiv["vorlauf"] == stufe]
+        unten, oben = berechne_spanne(verlauf_stufe, stichtag - timedelta(days=1), aktuell, prognose)
         regen_mm = float(regen.get(zeile.date, 0.0))
         tage.append({
             "datum": str(zeile.date),
@@ -270,8 +281,8 @@ def prognostiziere(plant_id: int = 1, neu_abrufen: bool = False) -> dict:
     daten = {
         "stichtag": str(stichtag),
         "abgerufen": datetime.now(timezone.utc).isoformat(),
-        "verfahren": VERFAHREN,
-        "verfahren_name": BEZEICHNUNGEN[VERFAHREN],
+        "verfahren": verfahren,
+        "verfahren_name": BEZEICHNUNGEN[verfahren],
         "lernverfahren": lern_name,
         "lernverfahren_name": BEZEICHNUNGEN.get(lern_name) if lern_name else None,
         "quote": _r(quote, 3),
@@ -291,7 +302,7 @@ def archiviere_heute(plant_id: int, jetzt: datetime | None = None) -> int:
         schon = session.execute(
             select(func.count()).select_from(PrognoseArchiv).where(
                 PrognoseArchiv.plant_id == plant_id, PrognoseArchiv.stichtag == jetzt.date(),
-                PrognoseArchiv.herkunft == "live", PrognoseArchiv.verfahren == VERFAHREN)
+                PrognoseArchiv.herkunft == "live")
         ).scalar_one()
     if schon:
         return 0
@@ -307,8 +318,8 @@ def archiviere_heute(plant_id: int, jetzt: datetime | None = None) -> int:
         }
         for tag in vorschau["tage"] if 1 <= tag["vorlauf"] <= max_vorlauf()
     ]
-    anzahl = _schreibe(plant_id, zeilen)
-    logger.info("Prognosearchiv: %s Prognosen vom %s festgeschrieben", anzahl, vorschau["stichtag"])
+    anzahl = _schreibe(plant_id, zeilen, vorschau["verfahren"])
+    logger.info("Prognosearchiv: %s Prognosen vom %s festgeschrieben (%s)", anzahl, vorschau["stichtag"], vorschau["verfahren"])
     return anzahl
 
 
