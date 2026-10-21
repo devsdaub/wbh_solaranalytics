@@ -5,6 +5,11 @@ Produktionsdaten aus der Hoymiles Cloud, holt dazu passende Wetter und
 Luftqualitätsdaten von Open-Meteo und zeigt alles zusammen in einem
 Dashboard mit ein paar Diagrammen.
 
+Dazu kommt der Reiter Analytics: eine Ertragsprognose für heute und die
+nächsten sechs Tage im Stil eines Wetterberichts, Prognose gegen Messung,
+ein Vergleich der Verfahren, die zeitlich sauber gegeneinander bewertet
+werden, und der Anteil jeder Datenquelle an der Prognose.
+
 ## Voraussetzungen
 
 Mehr als Docker wird nicht gebraucht, also Docker Desktop unter Windows
@@ -62,19 +67,37 @@ plant:
   name: "Kleines Kraftwerk"
   installation_date: "2025-04-26"
   location:
-    latitude: 48.7823
-    longitude: 9.177
-    city: "Stuttgart"
+    latitude: 48.75
+    longitude: 9.17
+    city: "Stuttgart-Degerloch"
   panel:
     capacity_w: 800
     module_capacity_wp: 900
-    tilt_deg: 17
-    azimuth_deg: 203
+    tilt_deg: 72
+    azimuth_deg: 208
+  frueher:
+    - bis: "2026-02-21"
+      city: "Stuttgart"
+      latitude: 48.7823
+      longitude: 9.177
+      azimuth_deg: 203
+  uebergang:
+    von: "2026-02-22"
+    bis: "2026-03-08"
   economics:
     acquisition_cost_eur: 550
     subsidy_eur: 0
     electricity_price_eur_kwh: 0.30
 ```
+
+location und panel beschreiben den aktuellen Standort. Ist die Anlage
+umgezogen, stehen frühere Standorte unter frueher, jeweils mit dem
+letzten Tag, an dem sie galten. Wetter, Satellit und Vorhersagearchiv
+werden dann für jeden Zeitraum mit den Koordinaten und der Ausrichtung
+des damaligen Standorts abgerufen, und die Analyse bekommt die Nummer
+des Standorts als Merkmal. Die Tage unter uebergang bleiben in der
+Auswertung außen vor, bei mir hing die Anlage nach dem Umzug zwei
+Wochen provisorisch. Ohne Umzug fallen beide Abschnitte einfach weg.
 
 installation_date ist der Tag, an dem die Anlage ans Netz ging, danach
 holt die Pipeline beim ersten Lauf alle Produktionsdaten ab diesem Datum.
@@ -83,8 +106,9 @@ geholt werden. capacity_w ist die Wechselrichterleistung, an der die
 Einspeisung gedeckelt wird, module_capacity_wp die Modulleistung, mit der
 der Effizienzquotient berechnet wird, bei mir liegt die über der
 Wechselrichterleistung, weil die Module mehr könnten als der
-Wechselrichter durchlässt. tilt_deg ist der Neigungswinkel des Dachs,
-azimuth_deg die Ausrichtung, hier wird nordbasiert angegeben wie auf
+Wechselrichter durchlässt. tilt_deg ist der Neigungswinkel der Module
+gegen die Waagerechte, 0 wäre flach liegend und 90 senkrecht, ein
+Balkongeländer liegt also eher bei 70 bis 90. azimuth_deg die Ausrichtung, hier wird nordbasiert angegeben wie auf
 einem Kompass, 180 wäre Süden. Die Werte unter economics werden in die
 Datenbank übernommen, ausgewertet werden sie bisher nicht. Eine
 Wirtschaftlichkeitsrechnung gehört bewusst nicht zum Umfang.
@@ -128,6 +152,51 @@ anzeigt. Fehlende Wetterdaten für ältere Tage werden automatisch
 nachgeladen. Unter /settings lässt sich der Lauf auch von Hand anstoßen,
 dort steht auch die Historie der bisherigen Läufe.
 
+Die Quellen im Einzelnen, alle frei und ohne Konto:
+
+| Quelle | Endpunkt | Wofür |
+|---|---|---|
+| Wetter im Rückblick | Open-Meteo Historical Forecast API, Modell `icon_d2` | Einstrahlung auf die Modulfläche, Temperatur, Wolken, Sicht, Sonnenscheindauer. Die ersten Stunden jedes ICON-D2-Laufs, näher an der Wirklichkeit als das IFS-Archiv |
+| Luftqualität | Open-Meteo Air Quality API | Saharastaub, PM10, Aerosole |
+| Satellit | Open-Meteo Satellite API, `eumetsat_sarah3` | gemessene Einstrahlung auf die Modulfläche, rund zwei Tage verzögert |
+| Vorhersagearchiv | Open-Meteo Previous Runs API, `icon_seamless` | was 1 bis 6 Tage vorher für jede Stunde vorhergesagt war |
+| Vorhersage | Open-Meteo Forecast API, `icon_seamless` | Wetter für heute und die nächsten sechs Tage |
+
+## Prognose und Analyse
+
+Die Prognose rechnet die vorhergesagte Einstrahlung auf die Modulfläche
+mal den Median der Ertragsquote der letzten 14 Messtage am selben
+Standort. Die Ertragsquote ist der Tagesertrag geteilt durch die am
+Vortag dafür vorhergesagte Einstrahlung. Die Spanne um jede Prognose ist
+das 10. und 90. Perzentil der Abweichungen in kWh der letzten 60 Tage
+mit gleichem Vorlauf. Jeden Abend ab 20 Uhr schreibt die Pipeline die
+Prognose für die nächsten sechs Tage fest, für die Zeit davor trägt sie
+aus dem Vorhersagearchiv nach, was am jeweiligen Stichtag prognostiziert
+worden wäre. Daraus entstehen die Vergleiche Prognose gegen Messung.
+
+Das Wettersymbol im Wetterbericht richtet sich nach dem Anteil der
+Sonnenstunden und der Regenmenge, nicht nach dem WMO-Tagescode, der das
+schlechteste Wetter des Tages meldet. Die Symbole sind die Meteocons von
+Bas Milius (https://github.com/basmilius/meteocons, MIT-Lizenz), die
+Lizenz liegt in app/static/icons/meteocons.
+
+Der Analyselauf startet von selbst, sobald der letzte älter als eine
+Woche ist, oder über „Analyse jetzt neu rechnen“ unter /settings bzw.
+`POST /api/analytics/train`, und dauert einige Minuten. Er bewertet
+Persistenz, Klimatologie, eine feste und eine nachgeführte Faustregel
+sowie lineare Regression, Random Forest und XGBoost, jeweils mit und
+ohne Nachführung, in zwei zeitlichen Schemata. Dazu kommen Ablation,
+Permutation Importance, Fehler je Wetterlage und je Jahreszeit. Für die
+Prognose setzt er das genaueste Verfahren ein, umgestellt wird aber nur,
+wenn es laut Diebold-Mariano-Test signifikant besser ist als das
+bisherige. Die Ergebnisse landen in analytics_artifacts/ergebnisse.json, die Prognosen
+je Tag in prognosen_s2.csv und die Abbildungen mit 300 dpi unter
+analytics_artifacts/abbildungen. Herauskopieren:
+
+```bash
+docker compose cp app:/app/analytics_artifacts ./ergebnisse
+```
+
 ## Ohne Hoymiles-Zugang
 
 Auch ohne config/hoymiles_auth.yaml startet alles und die Pipeline läuft
@@ -148,10 +217,13 @@ Produktionstagen auch Einstrahlung und Effizienzquotient vor.
 docker compose exec app python -m pytest -q
 ```
 
-25 Tests in vier Modulen, Laufzeit unter zwei Sekunden. Sie brauchen
-weder Datenbank noch Netz und prüfen die Prüfschemata, die Tagesgrenzen
-und Zeitumstellung, die Azimut-Umrechnung, den Parser für das
-Binärformat der Hoymiles-API sowie die Erreichbarkeit der Endpunkte.
+84 Tests in zwölf Modulen, Laufzeit rund fünf Sekunden. Sie prüfen die
+Prüfschemata, Tagesgrenzen und Zeitumstellung, die Azimut-Umrechnung,
+den Parser für das Binärformat der Hoymiles-API, die Standortgeschichte,
+den Merkmalsbau, die Referenz- und Lernverfahren, dass kein Zeitfenster
+in die Zukunft sieht, die Spanne der Prognose, die Auswahlregel, den
+wöchentlichen Analyselauf und die Erreichbarkeit der Seiten und
+Endpunkte. Die Tests der Endpunkte brauchen die laufende Datenbank.
 
 ## Stoppen und zurücksetzen
 
