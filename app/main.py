@@ -116,14 +116,9 @@ def dashboard(request: Request):
     )
 
 
-@app.get("/prognose", response_class=HTMLResponse)
-def prognose_page(request: Request):
-    return templates.TemplateResponse(request, "prognose.html", {})
-
-
-@app.get("/analyse", response_class=HTMLResponse)
-def analyse_page(request: Request):
-    return templates.TemplateResponse(request, "analyse.html", {})
+@app.get("/analytics", response_class=HTMLResponse)
+def analytics_page(request: Request):
+    return templates.TemplateResponse(request, "analytics.html", {})
 
 
 @app.get("/settings", response_class=HTMLResponse)

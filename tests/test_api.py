@@ -29,11 +29,13 @@ def test_zeitreihe_hat_gleich_lange_reihen():
     assert len(laengen) == 1
 
 
-def test_prognose_und_modellvergleich_rendern():
-    for pfad in ("/prognose", "/analyse"):
-        antwort = client.get(pfad)
-        assert antwort.status_code == 200
-        assert "SolarAnalytics" in antwort.text
+def test_analytics_seite_rendert_mit_reitern():
+    antwort = client.get("/analytics")
+
+    assert antwort.status_code == 200
+    assert 'id="analytics"' in antwort.text
+    assert "/static/js/analytics.js" in antwort.text
+    assert 'href="/analytics" class="aktiv"' in antwort.text
 
 
 def test_analysestatus_meldet_den_lauf():
