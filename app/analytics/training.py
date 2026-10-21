@@ -7,7 +7,8 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from app.analytics.abbildungen import erzeuge_abbildungen
-from app.analytics.artefakte import ARTEFAKTE, speichere_ergebnisse, speichere_modell
+from app.analytics.artefakte import ARTEFAKTE, lade_ergebnisse, speichere_ergebnisse, speichere_modell
+from app.analytics.auswahl import STANDARD, waehle_verfahren
 from app.analytics.bewertung import (
     berechne_importance,
     fehler_je_wetterlage,
@@ -31,7 +32,7 @@ from app.analytics.modelle import (
     MIN_TAGE_NACHFUEHRUNG,
     baue_modelle,
 )
-from app.analytics.prognose import VERFAHREN, guete, pflege_prognosearchiv
+from app.analytics.prognose import guete, pflege_prognosearchiv
 
 logger = logging.getLogger(__name__)
 
@@ -100,10 +101,20 @@ def trainiere_und_bewerte(session: Session, plant_id: int = 1) -> dict:
     logger.info("Analyse: Permutation Importance")
     importance = berechne_importance(rueckblick, bestes, ALLE_MERKMALE)
 
+    vergleich = vergleiche["vorhersage"]
+    haupt = vergleich["hauptschema"]
+    auswahl = waehle_verfahren(
+        vorhersage[ZIELGROESSE].to_numpy(dtype=float), vergleich["prognosen"][haupt], vergleich["masken"][haupt],
+        {name: werte[haupt]["mae"] for name, werte in vergleich["verfahren"].items()},
+        (lade_ergebnisse() or {}).get("eingesetzt", {}).get("verfahren"),
+    )
+    eingesetzt = auswahl["verfahren"]
+    logger.info("Analyse: eingesetzt wird %s. %s", eingesetzt, auswahl["grund"])
+
     logger.info("Analyse: Fehler nach Wetterlagen und Quellenvergleich")
     wetterlagen = {}
     for lage, verfahren in (("rueckblick", vergleiche["rueckblick"]["bestes_verfahren"]),
-                            ("vorhersage", VERFAHREN)):
+                            ("vorhersage", eingesetzt)):
         vergleich = vergleiche[lage]
         schema = vergleich["hauptschema"]
         # die Wetterlage beschreibt das tatsächliche Wetter, also immer aus dem Rückblick
@@ -116,10 +127,13 @@ def trainiere_und_bewerte(session: Session, plant_id: int = 1) -> dict:
         }
     quellen = vergleiche_quellen(rueckblick, vorhersage)
 
-    # für die Live-Prognose das beste Lernverfahren auf den Vorhersagen aller Tage
+    # gespeichert wird das eingesetzte Lernverfahren, sonst das beste als zweite Meinung
     vergleich = vergleiche["vorhersage"]
-    gewaehlt = min((vergleich["bestes_lernverfahren"], vergleich["bestes_nachgefuehrt"]),
-                   key=lambda n: vergleich["verfahren"][n][vergleich["hauptschema"]]["mae"])
+    if eingesetzt != STANDARD:
+        gewaehlt = eingesetzt
+    else:
+        gewaehlt = min((vergleich["bestes_lernverfahren"], vergleich["bestes_nachgefuehrt"]),
+                       key=lambda n: vergleich["verfahren"][n][haupt]["mae"])
     grundform = gewaehlt.removesuffix("_nachgefuehrt")
     faktor = 1.0
     if gewaehlt != grundform:
@@ -165,7 +179,7 @@ def trainiere_und_bewerte(session: Session, plant_id: int = 1) -> dict:
         "quellen": quellen,
         "horizont": archiv["horizont"],
         "horizont_jahreszeiten": archiv["jahreszeiten"],
-        "eingesetzt": {"verfahren": VERFAHREN, "lernverfahren": gewaehlt, "faktor": round(faktor, 3)},
+        "eingesetzt": {"verfahren": eingesetzt, "lernverfahren": gewaehlt, "faktor": round(faktor, 3), "auswahl": auswahl},
     }
     speichere_ergebnisse(ergebnis)
     logger.info("Analyse: Ergebnisse gespeichert nach %s s", ergebnis["dauer_sekunden"])
